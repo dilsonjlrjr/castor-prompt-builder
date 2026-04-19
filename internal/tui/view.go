@@ -35,7 +35,7 @@ func header(badge string) string {
 
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
-	sb.WriteString(styleTitle.Render(castor) + "\n\n")
+	sb.WriteString(styleTitle.Render(castorFrames[m.castorFrame]) + "\n\n")
 	sb.WriteString(header("") + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Selecione o modelo de prompt:") + "\n\n")
 
@@ -91,10 +91,10 @@ func (m AppModel) viewGap() string {
 	total := len(m.gaps)
 	current := m.gapIndex + 1
 	var sb strings.Builder
-	sb.WriteString(header(fmt.Sprintf("gaps %d de %d", current, total)) + "\n\n")
+	sb.WriteString(header(fmt.Sprintf("lacuna %d de %d", current, total)) + "\n\n")
 	sb.WriteString(styleSubtitle.Render(m.gaps[m.gapIndex]) + "\n\n")
 	sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("Enter próximo   Esc voltar   (vazio = pular)"))
+	sb.WriteString(styleHelp.Render("Enter próximo   Esc voltar   (deixe vazio para pular)"))
 	return sb.String()
 }
 

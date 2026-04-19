@@ -59,8 +59,14 @@ var (
 			Padding(0, 1)
 )
 
-const castor = `
-  /\_/\
- ( •ᴥ• ) CASTOR
- (  ▼  ) BUILDER
-  \_^_/ `
+// castorFrames — 4 quadros de dança do castor gordinho
+var castorFrames = []string{
+	// frame 0 — neutro
+	"   (\\/)   \n  (•ᴥ• )  \n ╭(    )╮ \n ║ ████ ║ \n ╰──────╯ \n   || ||  ",
+	// frame 1 — braço esquerdo levantado
+	"   (\\/)   \n \\(•ᴥ• )  \n ╭(    )╮ \n ║ ████ ║ \n ╰──────╯ \n  /| ||   ",
+	// frame 2 — braço direito levantado
+	"   (\\/)   \n  (•ᴥ• )/  \n ╭(    )╮ \n ║ ████ ║ \n ╰──────╯ \n   || |\\  ",
+	// frame 3 — ambos levantados (pulo!)
+	"   (\\/)   \n \\(^ᴥ^ )/  \n ╭(    )╮ \n ║ ████ ║ \n ╰──────╯ \n   \\/ \\/  ",
+}

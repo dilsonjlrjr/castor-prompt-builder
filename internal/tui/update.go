@@ -10,6 +10,10 @@ import (
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tickMsg:
+		m.castorFrame = (m.castorFrame + 1) % len(castorFrames)
+		return m, tickCmd()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
