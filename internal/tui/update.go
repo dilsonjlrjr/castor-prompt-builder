@@ -20,6 +20,8 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.screen {
 		case screenSelectModel:
 			return m.updateSelectModel(msg)
+		case screenModelInfo:
+			return m.updateModelInfo(msg)
 		case screenSelectRole:
 			return m.updateSelectRole(msg)
 		case screenNarrative:
@@ -51,6 +53,21 @@ func (m AppModel) updateSelectModel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.selectedModel < len(m.models)-1 {
 			m.selectedModel++
 		}
+	case "i":
+		m.screen = screenModelInfo
+	case "enter":
+		m.screen = screenSelectRole
+		m.selectedRole = 0
+	}
+	return m, nil
+}
+
+func (m AppModel) updateModelInfo(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "q":
+		return m, tea.Quit
+	case "esc":
+		m.screen = screenSelectModel
 	case "enter":
 		m.screen = screenSelectRole
 		m.selectedRole = 0

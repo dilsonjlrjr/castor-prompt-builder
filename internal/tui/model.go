@@ -11,6 +11,7 @@ type screen int
 
 const (
 	screenSelectModel screen = iota
+	screenModelInfo
 	screenSelectRole
 	screenNarrative
 	screenGap
