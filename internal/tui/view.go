@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func (m AppModel) View() string {
@@ -33,9 +35,18 @@ func header(badge string) string {
 	return title
 }
 
+func renderCastor(frame int) string {
+	face := styleCastor.Render(castorFrames[frame])
+	title := lipgloss.NewStyle().
+		Foreground(colorPrimary).
+		Bold(true).
+		Render("  CASTOR\nBUILDER")
+	return lipgloss.JoinHorizontal(lipgloss.Center, face, "  ", title)
+}
+
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
-	sb.WriteString(styleTitle.Render(castorFrames[m.castorFrame]) + "\n\n")
+	sb.WriteString(renderCastor(m.castorFrame) + "\n\n")
 	sb.WriteString(header("") + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Selecione o modelo de prompt:") + "\n\n")
 
