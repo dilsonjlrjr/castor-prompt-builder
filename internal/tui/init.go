@@ -1,22 +1,12 @@
 package tui
 
 import (
-	"time"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/dilsonrabelo/castor-prompt-builder/internal/engine"
 	"github.com/dilsonrabelo/castor-prompt-builder/internal/parser"
 )
-
-type tickMsg time.Time
-
-func tickCmd() tea.Cmd {
-	return tea.Tick(280*time.Millisecond, func(t time.Time) tea.Msg {
-		return tickMsg(t)
-	})
-}
 
 func New(models []*parser.Model, roles []*parser.Role) AppModel {
 	ti := textinput.New()
@@ -40,5 +30,5 @@ func New(models []*parser.Model, roles []*parser.Role) AppModel {
 }
 
 func (m AppModel) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, tickCmd())
+	return textinput.Blink
 }

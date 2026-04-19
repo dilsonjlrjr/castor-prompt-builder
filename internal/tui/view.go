@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+
 func (m AppModel) View() string {
 	switch m.screen {
 	case screenSelectModel:
@@ -35,18 +36,17 @@ func header(badge string) string {
 	return title
 }
 
-func renderCastor(frame int) string {
-	face := styleCastor.Render(castorFrames[frame])
-	title := lipgloss.NewStyle().
+func renderCastor() string {
+	titulo := lipgloss.NewStyle().
 		Foreground(colorPrimary).
 		Bold(true).
 		Render("  CASTOR\nBUILDER")
-	return lipgloss.JoinHorizontal(lipgloss.Center, face, "  ", title)
+	return lipgloss.JoinHorizontal(lipgloss.Center, renderMascote(), "   ", titulo)
 }
 
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
-	sb.WriteString(renderCastor(m.castorFrame) + "\n\n")
+	sb.WriteString(renderCastor() + "\n\n")
 	sb.WriteString(header("") + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Selecione o modelo de prompt:") + "\n\n")
 

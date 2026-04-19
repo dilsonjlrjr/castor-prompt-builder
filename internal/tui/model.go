@@ -51,9 +51,6 @@ type AppModel struct {
 	phaseTitle     string
 	phaseEditField int // 0=titulo, 1=descricao
 
-	// animação do mascote
-	castorFrame int
-
 	// resultado
 	savedPath string
 	err       error
