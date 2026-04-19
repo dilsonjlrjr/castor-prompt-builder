@@ -29,28 +29,6 @@ func (m AppModel) View() string {
 	return ""
 }
 
-// bigTitle gera o título "CASTOR / BUILDER" em letras grandes com blocos
-func bigTitle() string {
-	linha1 := lipgloss.NewStyle().
-		Foreground(colorPrimary).
-		Bold(true).
-		Render("█▀▀ █▀█ █▀ ▀█▀ █▀█ █▀█")
-	linha2 := lipgloss.NewStyle().
-		Foreground(colorPrimary).
-		Bold(true).
-		Render("█▄▄ █▀█ ▄█  █  █▄█ █▀▄")
-	linha3 := lipgloss.NewStyle().
-		Foreground(colorAccent).
-		Bold(true).
-		Render("█▄▄ █ █ █ █ █   █▀▄ ██▄ █▀█")
-	linha4 := lipgloss.NewStyle().
-		Foreground(colorAccent).
-		Bold(true).
-		Render("▀▀█ █▄█ █ █ █▄▄ █ █ █▄█ █ █")
-
-	sep := lipgloss.NewStyle().Foreground(colorMuted).Render("─────────────────────────────")
-	return linha1 + "\n" + linha2 + "\n" + sep + "\n" + linha3 + "\n" + linha4
-}
 
 func renderCastor() string {
 	return lipgloss.JoinHorizontal(
