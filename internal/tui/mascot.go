@@ -12,16 +12,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// RenderMascote tenta usar chafa-go com assets/castor.png.
+// alturaMascote define quantas linhas de células o mascote ocupa.
+// cols é calculado automaticamente preservando aspect ratio da imagem
+// compensando a proporção 2:1 (altura:largura) das células do terminal.
+const alturaMascote = 16
+
+// renderMascote tenta usar chafa-go com assets/castor.png.
 // Se o arquivo não existir, usa o fallback em lipgloss.
 func renderMascote() string {
-	if art, err := renderComChafa("assets/castor.png", 18, 10); err == nil {
+	if art, err := renderComChafa("assets/castor.png"); err == nil {
 		return art
 	}
 	return renderMascoteFallback()
 }
 
-func renderComChafa(path string, largura, altura int) (string, error) {
+func renderComChafa(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -35,6 +40,14 @@ func renderComChafa(path string, largura, altura int) (string, error) {
 
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
+
+	// células do terminal têm ~2:1 (h:w), então cols = rows * 2 * (w/h)
+	// para imagem quadrada: cols = rows * 2
+	rows := alturaMascote
+	cols := rows * 2 * w / h
+	if cols < 1 {
+		cols = rows * 2
+	}
 
 	// extrai bytes RGBA8
 	pixels := make([]uint8, w*h*4)
@@ -52,7 +65,7 @@ func renderComChafa(path string, largura, altura int) (string, error) {
 
 	cfg := chafa.CanvasConfigNew()
 	defer chafa.CanvasConfigUnref(cfg)
-	chafa.CanvasConfigSetGeometry(cfg, int32(largura), int32(altura))
+	chafa.CanvasConfigSetGeometry(cfg, int32(cols), int32(rows))
 	chafa.CanvasConfigSetSymbolMap(cfg, sm)
 
 	canvas := chafa.CanvasNew(cfg)
