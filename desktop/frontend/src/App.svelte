@@ -44,7 +44,7 @@
 
   const ONBOARD_SLIDES = [
     {
-      emoji:    '🦫',
+      img:      '/castor.png',
       title:    'Bem-vindo ao CASTOR Builder!',
       subtitle: 'Sua nova casa para construir prompts estruturados',
       body:     'Detectamos que é a sua primeira vez por aqui.\nCriamos um diretório especial no seu computador para guardar tudo que o CASTOR precisa.',
@@ -297,15 +297,21 @@
         <!-- corpo do slide -->
         <div class="px-10 pt-10 pb-6">
 
-          <!-- emoji grande com glow -->
+          <!-- ilustração: imagem do mascote ou emoji grande -->
           <div class="flex justify-center mb-6">
             <div class="relative">
-              <div class="absolute inset-0 rounded-full blur-2xl opacity-40"
-                   style="background:{slide.accent}; transform:scale(1.4)"></div>
-              <div class="relative text-7xl leading-none select-none"
-                   style="filter:drop-shadow(0 0 24px {slide.accent}88)">
-                {slide.emoji}
-              </div>
+              <div class="absolute inset-0 rounded-full blur-2xl opacity-30"
+                   style="background:{slide.accent}; transform:scale(1.6)"></div>
+              {#if slide.img}
+                <img src={slide.img} alt="CASTOR"
+                     class="relative w-24 h-24 object-contain"
+                     style="filter:drop-shadow(0 0 28px {slide.accent}99)" />
+              {:else}
+                <div class="relative text-7xl leading-none select-none"
+                     style="filter:drop-shadow(0 0 24px {slide.accent}88)">
+                  {slide.emoji}
+                </div>
+              {/if}
             </div>
           </div>
 
