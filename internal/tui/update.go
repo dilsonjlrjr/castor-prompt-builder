@@ -184,7 +184,7 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.screen = screenSelectRole
 		return m, nil
-	case "ctrl+d":
+	case "ctrl+s":
 		m.narrative = m.textArea.Value()
 		if strings.TrimSpace(m.narrative) == "" {
 			return m, nil
