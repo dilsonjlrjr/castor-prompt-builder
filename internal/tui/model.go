@@ -32,7 +32,10 @@ type AppModel struct {
 
 	// seleções
 	selectedModel int
-	selectedRole  int
+	// multi-select de papéis
+	roleCursor    int
+	selectedRoles map[int]bool
+	roleSearch    string
 
 	// inputs
 	textInput textinput.Model

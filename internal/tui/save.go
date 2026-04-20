@@ -36,11 +36,34 @@ func slugify(s string) string {
 }
 
 func (m AppModel) buildAndSave() AppModel {
-	role := m.roles[m.selectedRole]
 	model := m.models[m.selectedModel]
 
-	// preenche values com role e narrative
-	m.values.Fields["role"] = role.Nome
+	// combina múltiplos papéis selecionados
+	var nomes, descs, gaps []string
+	roleID := "papel"
+	for idx := range m.roles {
+		if !m.selectedRoles[idx] {
+			continue
+		}
+		r := m.roles[idx]
+		nomes = append(nomes, r.Nome)
+		descs = append(descs, r.Descricao)
+		gaps = append(gaps, r.GapsComuns...)
+		if roleID == "papel" {
+			roleID = r.ID
+		}
+	}
+	roleNome := strings.Join(nomes, " + ")
+	roleDesc := strings.Join(descs, "\n\n")
+	if roleNome == "" {
+		// fallback seguro
+		roleNome = "Especialista"
+		roleDesc = ""
+	}
+	m.gaps = unique(gaps)
+
+	// preenche values
+	m.values.Fields["role"] = roleNome + ". " + roleDesc
 	m.values.Fields["action"] = m.narrative
 	m.values.Fields["context"] = m.narrative
 	m.values.Fields["task"] = m.narrative
@@ -65,7 +88,7 @@ func (m AppModel) buildAndSave() AppModel {
 
 	date := time.Now().Format("20060102")
 	slug := slugify(m.narrative)
-	filename := fmt.Sprintf("%s_%s_%s.md", date, role.ID, slug)
+	filename := fmt.Sprintf("%s_%s_%s.md", date, roleID, slug)
 
 	if err := os.MkdirAll("prompts", 0755); err != nil {
 		m.err = err
@@ -76,7 +99,7 @@ func (m AppModel) buildAndSave() AppModel {
 	path := filepath.Join("prompts", filename)
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# Prompt — %s\n", role.Nome))
+	sb.WriteString(fmt.Sprintf("# Prompt — %s\n", roleNome))
 	sb.WriteString(fmt.Sprintf("_Modelo: %s | Gerado em: %s_\n\n", model.Nome, time.Now().Format("2006-01-02")))
 	sb.WriteString("---\n\n")
 	sb.WriteString(rendered)
@@ -97,4 +120,17 @@ func (m AppModel) buildAndSave() AppModel {
 
 	m.screen = screenDone
 	return m
+}
+
+// unique remove duplicatas preservando ordem
+func unique(ss []string) []string {
+	seen := make(map[string]bool)
+	var out []string
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
 }

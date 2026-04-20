@@ -57,7 +57,12 @@ func (m AppModel) updateSelectModel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenModelInfo
 	case "enter":
 		m.screen = screenSelectRole
-		m.selectedRole = 0
+		m.roleCursor = 0
+		m.selectedRoles = make(map[int]bool)
+		m.roleSearch = ""
+		m.textInput.Reset()
+		m.textInput.Placeholder = "🔍 Buscar papel..."
+		m.textInput.Focus()
 	}
 	return m, nil
 }
@@ -70,33 +75,86 @@ func (m AppModel) updateModelInfo(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.screen = screenSelectModel
 	case "enter":
 		m.screen = screenSelectRole
-		m.selectedRole = 0
+		m.roleCursor = 0
+		m.selectedRoles = make(map[int]bool)
+		m.roleSearch = ""
+		m.textInput.Reset()
+		m.textInput.Placeholder = "🔍 Buscar papel..."
+		m.textInput.Focus()
 	}
 	return m, nil
 }
 
-// --- Select Role ---
+// --- Select Role (multi-select + busca) ---
+
+func (m AppModel) filteredRoleIndices() []int {
+	if m.roleSearch == "" {
+		idxs := make([]int, len(m.roles))
+		for i := range m.roles {
+			idxs[i] = i
+		}
+		return idxs
+	}
+	q := strings.ToLower(m.roleSearch)
+	var idxs []int
+	for i, r := range m.roles {
+		if strings.Contains(strings.ToLower(r.Nome), q) ||
+			strings.Contains(strings.ToLower(r.Categoria), q) {
+			idxs = append(idxs, i)
+		}
+	}
+	return idxs
+}
 
 func (m AppModel) updateSelectRole(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	filtered := m.filteredRoleIndices()
+
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
+		if m.roleSearch != "" {
+			m.roleSearch = ""
+			m.textInput.Reset()
+			m.roleCursor = 0
+			return m, nil
+		}
 		m.screen = screenSelectModel
+		return m, nil
 	case "up", "k":
-		if m.selectedRole > 0 {
-			m.selectedRole--
+		if m.roleCursor > 0 {
+			m.roleCursor--
 		}
+		return m, nil
 	case "down", "j":
-		if m.selectedRole < len(m.roles)-1 {
-			m.selectedRole++
+		if m.roleCursor < len(filtered)-1 {
+			m.roleCursor++
 		}
+		return m, nil
+	case " ":
+		if len(filtered) > 0 && m.roleCursor < len(filtered) {
+			globalIdx := filtered[m.roleCursor]
+			m.selectedRoles[globalIdx] = !m.selectedRoles[globalIdx]
+		}
+		return m, nil
 	case "enter":
-		m.screen = screenNarrative
-		m.textArea.Reset()
-		m.textArea.Focus()
+		if len(m.selectedRoles) > 0 {
+			m.screen = screenNarrative
+			m.textArea.Reset()
+			m.textArea.Focus()
+		}
+		return m, nil
 	}
-	return m, nil
+
+	// demais teclas → busca
+	var cmd tea.Cmd
+	m.textInput, cmd = m.textInput.Update(msg)
+	newSearch := m.textInput.Value()
+	if newSearch != m.roleSearch {
+		m.roleSearch = newSearch
+		m.roleCursor = 0
+	}
+	return m, cmd
 }
 
 // --- Narrative ---
@@ -113,9 +171,14 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if strings.TrimSpace(m.narrative) == "" {
 			return m, nil
 		}
-		// prepara gaps do role selecionado
-		role := m.roles[m.selectedRole]
-		m.gaps = role.GapsComuns
+		// prepara gaps combinados dos papéis selecionados
+		var allGaps []string
+		for idx, sel := range m.selectedRoles {
+			if sel {
+				allGaps = append(allGaps, m.roles[idx].GapsComuns...)
+			}
+		}
+		m.gaps = unique(allGaps)
 		m.gapIndex = 0
 		m.gapAnswers = make([]string, len(m.gaps))
 		if len(m.gaps) > 0 {

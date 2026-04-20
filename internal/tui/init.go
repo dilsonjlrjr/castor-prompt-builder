@@ -20,12 +20,13 @@ func New(models []*parser.Model, roles []*parser.Role) AppModel {
 	ta.Focus()
 
 	return AppModel{
-		screen: screenSelectModel,
-		models: models,
-		roles:  roles,
-		values: engine.NewValues(),
-		textInput: ti,
-		textArea:  ta,
+		screen:        screenSelectModel,
+		models:        models,
+		roles:         roles,
+		values:        engine.NewValues(),
+		textInput:     ti,
+		textArea:      ta,
+		selectedRoles: make(map[int]bool),
 	}
 }
 

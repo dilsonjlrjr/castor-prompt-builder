@@ -243,34 +243,92 @@ func (m AppModel) viewModelInfo() string {
 	return sb.String()
 }
 
+// nomeCategoria mapeia o id do diretório para nome de exibição
+var nomeCategoria = map[string]string{
+	"arquitetura": "Arquitetura",
+	"frontend":    "Frontend & Mobile",
+	"backend":     "Backend",
+	"devops":      "DevOps & Cloud",
+	"banco":       "Banco de Dados",
+	"dados":       "Dados & IA",
+	"gestao":      "Gestão",
+	"seguranca":   "Segurança",
+	"design":      "Design",
+	"marketing":   "Marketing",
+}
+
 // --- Selecionar Papel ---
 
 func (m AppModel) viewSelectRole() string {
 	model := m.models[m.selectedModel]
-	var sb strings.Builder
-	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("modelo: "+model.Nome) + "\n\n")
-	sb.WriteString(styleSubtitle.Render("Selecione o papel:") + "\n\n")
+	filtered := m.filteredRoleIndices()
 
-	for i, role := range m.roles {
-		cursor := "  "
-		style := styleNormal
-		if i == m.selectedRole {
-			cursor = styleSelected.Render("> ")
-			style = styleSelected
-		}
-		sb.WriteString(cursor + style.Render(role.Nome) + "\n")
+	selectedCount := len(m.selectedRoles)
+	titulo := "Selecione o(s) papel(eis):"
+	if selectedCount > 0 {
+		titulo += fmt.Sprintf("  %s", badge(fmt.Sprintf("%d selecionado(s)", selectedCount)))
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   Esc voltar"))
+	var sb strings.Builder
+	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("modelo: "+model.Nome) + "\n\n")
+	sb.WriteString(styleSubtitle.Render(titulo) + "\n\n")
+
+	// campo de busca
+	sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
+
+	if len(filtered) == 0 {
+		sb.WriteString(styleMuted.Render("  Nenhum papel encontrado.") + "\n")
+	}
+
+	lastCat := ""
+	for listIdx, globalIdx := range filtered {
+		role := m.roles[globalIdx]
+
+		// cabeçalho de categoria
+		cat := role.Categoria
+		if catNome, ok := nomeCategoria[cat]; ok {
+			cat = catNome
+		}
+		if cat != lastCat {
+			sb.WriteString("\n" + styleSelected.Render("  ── "+strings.ToUpper(cat)+" ──") + "\n")
+			lastCat = cat
+		}
+
+		cursor := "  "
+		check := "[ ]"
+		style := styleNormal
+		if listIdx == m.roleCursor {
+			cursor = "> "
+			style = styleSelected
+		}
+		if m.selectedRoles[globalIdx] {
+			check = "[✓]"
+		}
+		sb.WriteString(cursor + style.Render(check+" "+role.Nome) + "\n")
+	}
+
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc voltar"))
 	return sb.String()
 }
 
 // --- Narrativa ---
 
+func (m AppModel) selectedRoleNames() string {
+	var nomes []string
+	for idx, sel := range m.selectedRoles {
+		if sel {
+			nomes = append(nomes, m.roles[idx].Nome)
+		}
+	}
+	if len(nomes) == 0 {
+		return "papel"
+	}
+	return strings.Join(nomes, " + ")
+}
+
 func (m AppModel) viewNarrative() string {
-	role := m.roles[m.selectedRole]
 	var sb strings.Builder
-	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("papel: "+role.Nome) + "\n\n")
+	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(m.selectedRoleNames()) + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Descreva a tarefa livremente:") + "\n\n")
 	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
 	sb.WriteString(styleHelp.Render("Ctrl+S confirmar   Esc voltar"))

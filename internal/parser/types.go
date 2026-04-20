@@ -1,6 +1,6 @@
 package parser
 
-// Role representa um papel carregado de roles/*.md
+// Role representa um papel carregado de roles/**/*.md
 type Role struct {
 	ID          string   `yaml:"id"`
 	Nome        string   `yaml:"nome"`
@@ -8,6 +8,7 @@ type Role struct {
 	Habilidades []string `yaml:"habilidades"`
 	GapsComuns  []string `yaml:"gaps_comuns"`
 	Descricao   string   // corpo do .md abaixo do frontmatter
+	Categoria   string   // derivado do nome do subdiretório
 }
 
 // FieldType define o tipo de campo de um modelo
