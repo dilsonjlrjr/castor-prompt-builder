@@ -465,8 +465,8 @@ func (m AppModel) viewGap() string {
 	var sb strings.Builder
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(fmt.Sprintf("lacuna %d de %d", current, total)) + "\n\n")
 	sb.WriteString(styleSubtitle.Render(m.gaps[m.gapIndex]) + "\n\n")
-	sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("Enter próximo   Esc voltar   (deixe vazio para pular)"))
+	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
+	sb.WriteString(styleHelp.Render("Ctrl+S próximo   Esc voltar   (deixe vazio para pular)"))
 	return sb.String()
 }
 

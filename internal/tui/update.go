@@ -201,9 +201,10 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.gapAnswers = make([]string, len(m.gaps))
 		if len(m.gaps) > 0 {
 			m.screen = screenGap
-			m.textInput.Reset()
-			m.textInput.Placeholder = "Digite sua resposta..."
-			m.textInput.Focus()
+			m.textArea.Reset()
+			m.textArea.SetHeight(4)
+			m.textArea.Placeholder = "Digite sua resposta..."
+			m.textArea.Focus()
 		} else {
 			m.screen = screenAskPhase
 		}
@@ -223,25 +224,34 @@ func (m AppModel) updateGap(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		if m.gapIndex > 0 {
 			m.gapIndex--
-			m.textInput.Placeholder = "Digite sua resposta..."
-			m.textInput.SetValue(m.gapAnswers[m.gapIndex])
+			m.textArea.Reset()
+			m.textArea.SetHeight(4)
+			m.textArea.Placeholder = "Digite sua resposta..."
+			m.textArea.SetValue(m.gapAnswers[m.gapIndex])
+			m.textArea.Focus()
 		} else {
 			m.screen = screenNarrative
+			m.textArea.SetHeight(8)
+			m.textArea.Placeholder = "Descreva a tarefa livremente...\n(Ctrl+S para confirmar)"
+			m.textArea.SetValue(m.narrative)
+			m.textArea.Focus()
 		}
 		return m, nil
-	case "enter", "tab":
-		m.gapAnswers[m.gapIndex] = m.textInput.Value()
+	case "ctrl+s":
+		m.gapAnswers[m.gapIndex] = m.textArea.Value()
 		m.gapIndex++
 		if m.gapIndex >= len(m.gaps) {
 			m.screen = screenAskPhase
 		} else {
-			m.textInput.Reset()
-			m.textInput.Placeholder = "Digite sua resposta..."
+			m.textArea.Reset()
+			m.textArea.SetHeight(4)
+			m.textArea.Placeholder = "Digite sua resposta..."
+			m.textArea.Focus()
 		}
 		return m, nil
 	}
 	var cmd tea.Cmd
-	m.textInput, cmd = m.textInput.Update(msg)
+	m.textArea, cmd = m.textArea.Update(msg)
 	return m, cmd
 }
 
