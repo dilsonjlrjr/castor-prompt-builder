@@ -138,7 +138,7 @@ func (m AppModel) viewSelectModel() string {
 		sb.WriteString(line + "\n")
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   q sair"))
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   ↩ selecionar   q sair"))
 	return sb.String()
 }
 
@@ -311,7 +311,7 @@ func (m AppModel) viewModelInfo() string {
 	if end < len(infoLines) {
 		sb.WriteString(styleMuted.Render("  ↓ mais abaixo (j / ↓)") + "\n")
 	}
-	sb.WriteString(styleHelp.Render("↑↓ rolar   Esc voltar   Enter selecionar este modelo"))
+	sb.WriteString(styleHelp.Render("↑↓ rolar   ⎋ voltar   ↩ selecionar este modelo"))
 	return sb.String()
 }
 
@@ -353,7 +353,7 @@ func (m AppModel) viewSelectRole() string {
 
 	if len(filtered) == 0 {
 		sb.WriteString(styleMuted.Render("  Nenhum papel encontrado.") + "\n")
-		sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc limpar busca / voltar   (digite para buscar)"))
+		sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   ␣ marcar/desmarcar   ↩ confirmar   ⎋ limpar busca / voltar   (digite para buscar)"))
 		return sb.String()
 	}
 
@@ -453,7 +453,7 @@ func (m AppModel) viewNarrative() string {
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(m.selectedRoleNames()) + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Descreva a tarefa livremente:") + "\n\n")
 	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("Ctrl+S confirmar   Esc voltar"))
+	sb.WriteString(styleHelp.Render("⌃S confirmar   ⎋ voltar"))
 	return sb.String()
 }
 
@@ -466,7 +466,7 @@ func (m AppModel) viewGap() string {
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(fmt.Sprintf("lacuna %d de %d", current, total)) + "\n\n")
 	sb.WriteString(styleSubtitle.Render(m.gaps[m.gapIndex]) + "\n\n")
 	sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("Enter próximo   Esc voltar   (deixe vazio para pular)"))
+	sb.WriteString(styleHelp.Render("↩ próximo   ⎋ voltar   (deixe vazio para pular)"))
 	return sb.String()
 }
 
@@ -488,7 +488,7 @@ func (m AppModel) viewAskPhase() string {
 		sb.WriteString(cursor + style.Render(opt) + "\n")
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter confirmar   Esc voltar"))
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   ↩ confirmar   ⎋ voltar"))
 	return sb.String()
 }
 
@@ -499,7 +499,7 @@ func (m AppModel) viewDefinePhase() string {
 		sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("fases") + "\n\n")
 		sb.WriteString(styleSubtitle.Render("Quantas fases?") + "\n\n")
 		sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
-		sb.WriteString(styleHelp.Render("Enter confirmar"))
+		sb.WriteString(styleHelp.Render("↩ confirmar"))
 		return sb.String()
 	}
 
@@ -509,11 +509,11 @@ func (m AppModel) viewDefinePhase() string {
 	if m.phaseEditField == 0 {
 		sb.WriteString(styleSubtitle.Render("Título da fase:") + "\n\n")
 		sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
-		sb.WriteString(styleHelp.Render("Enter próximo campo   Esc voltar"))
+		sb.WriteString(styleHelp.Render("↩ próximo campo   ⎋ voltar"))
 	} else {
 		sb.WriteString(styleSubtitle.Render("Descrição da fase:") + "\n\n")
 		sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
-		sb.WriteString(styleHelp.Render("Enter avançar   Esc voltar"))
+		sb.WriteString(styleHelp.Render("↩ avançar   ⎋ voltar"))
 	}
 	return sb.String()
 }
@@ -532,7 +532,7 @@ func (m AppModel) viewDone() string {
 		sb.WriteString(styleSelected.Render("  "+m.savedPath) + "\n")
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("Enter / q para sair"))
+	sb.WriteString("\n" + styleHelp.Render("↩ / q para sair"))
 	return sb.String()
 }
 
