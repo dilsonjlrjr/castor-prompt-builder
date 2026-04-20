@@ -206,16 +206,33 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 	vals.Fields["task"]    = req.Narrativa
 	vals.Fields["input"]   = req.Narrativa
 
-	// gap answers: usa FieldID quando disponível (campos do modelo),
-	// caso contrário armazena como contexto extra
+	// gap answers: usa FieldID para mapear ao campo correto do modelo
 	for _, ga := range req.GapAnswers {
-		if strings.TrimSpace(ga.Resposta) == "" {
+		if strings.TrimSpace(ga.Resposta) == "" || ga.FieldID == "" {
 			continue
 		}
-		if ga.FieldID != "" {
+		// descobre o tipo do campo para rotear corretamente
+		var tipo parser.FieldType
+		for _, c := range modelo.Campos {
+			if c.ID == ga.FieldID {
+				tipo = c.Tipo
+				break
+			}
+		}
+		if tipo == parser.FieldList || tipo == parser.FieldMultiselect {
+			// lista: uma entrada por linha → vals.Lists para {{#each}} funcionar
+			var items []string
+			for _, line := range strings.Split(ga.Resposta, "\n") {
+				if t := strings.TrimSpace(line); t != "" {
+					items = append(items, t)
+				}
+			}
+			if len(items) > 0 {
+				vals.Lists[ga.FieldID] = items
+			}
+		} else {
 			vals.Fields[ga.FieldID] = ga.Resposta
 		}
-		// gaps de papel sem fieldId são contexto extra — não entram no template diretamente
 	}
 
 	// fases

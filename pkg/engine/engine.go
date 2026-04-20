@@ -95,7 +95,8 @@ func Render(template string, vals *Values) string {
 		if v, ok := vals.Fields[field]; ok {
 			return v
 		}
-		return match
+		// campo não preenchido: retorna vazio (nunca deixa {{placeholder}} no output)
+		return ""
 	})
 
 	// limpa linhas duplas extras

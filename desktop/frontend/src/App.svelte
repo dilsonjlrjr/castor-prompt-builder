@@ -488,7 +488,13 @@
               <textarea
                 bind:value={gapAnswers[gapIndex]}
                 on:input={() => gapError = false}
-                placeholder={gaps[gapIndex].obrigatorio ? 'Campo obrigatório — preencha para continuar' : 'Digite sua resposta... (deixe vazio para pular)'}
+                placeholder={
+                  (gaps[gapIndex].tipo === 'list' || gaps[gapIndex].tipo === 'multiselect')
+                    ? 'Um item por linha:\nBlog\nLinkedIn\nInstagram'
+                    : gaps[gapIndex].obrigatorio
+                      ? 'Campo obrigatório — preencha para continuar'
+                      : 'Digite sua resposta... (deixe vazio para pular)'
+                }
                 rows="5"
                 class="w-full px-4 py-3 rounded-xl border text-sm
                        bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50]
