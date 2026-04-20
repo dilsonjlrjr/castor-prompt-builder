@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { fade, fly } from 'svelte/transition'
+  import { fly } from 'svelte/transition'
   import { GetModels, GetRoles, BuildPrompt } from '../wailsjs/go/main/App.js'
+  import { main } from '../wailsjs/go/models'
 
   // ---- tipos ----
   type Model  = { id: string; nome: string; descricao: string }
@@ -92,6 +93,12 @@
     if (screen === 'phase')     { screen = gaps.length > 0 ? 'gap' : 'narrative'; gapIndex = gaps.length - 1; return }
   }
 
+  function toggleRole(id: string) {
+    const s = new Set(selectedRoles)
+    s.has(id) ? s.delete(id) : s.add(id)
+    selectedRoles = s
+  }
+
   function confirmModel(m: Model) {
     selectedModel = m
     selectedRoles = new Set()
@@ -127,13 +134,13 @@
 
   async function build() {
     building = true
-    const result = await BuildPrompt({
+    const result = await BuildPrompt(main.BuildRequestDTO.createFrom({
       model_id:    selectedModel!.id,
       role_ids:    [...selectedRoles],
       narrativa:   narrative,
       gap_answers: gaps.map((p, i) => ({ pergunta: p, resposta: gapAnswers[i] ?? '' })),
       steps:       usePhases ? phases : [],
-    })
+    }))
     resultContent = result.conteudo
     resultPath    = result.caminho
     resultError   = result.erro ?? ''
