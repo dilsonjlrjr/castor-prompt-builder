@@ -453,7 +453,7 @@ func (m AppModel) viewNarrative() string {
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(m.selectedRoleNames()) + "\n\n")
 	sb.WriteString(styleSubtitle.Render("Descreva a tarefa livremente:") + "\n\n")
 	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("⌃S confirmar   ⎋ voltar"))
+	sb.WriteString(styleHelp.Render("⌃D confirmar   ⎋ voltar"))
 	return sb.String()
 }
 
