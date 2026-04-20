@@ -12,7 +12,7 @@
   type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result'
 
   // Gap unificado: campo do modelo (tem fieldId) ou gap de papel (fieldId = '')
-  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[] }
+  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean }
 
   // ---- estado ----
   let models:  Model[] = []
@@ -125,18 +125,19 @@
     // 1) Campos obrigatórios do modelo que não são mapeados automaticamente
     const modelGaps: Gap[] = (selectedModel?.campos ?? []).map(c => ({
       fieldId:  c.id,
-      pergunta: c.label,
-      tipo:     c.tipo,
-      opcoes:   c.opcoes ?? [],
+      pergunta:   c.label,
+      tipo:       c.tipo,
+      opcoes:     c.opcoes ?? [],
+      obrigatorio: c.obrigatorio,
     }))
 
-    // 2) Gaps de papel (sem fieldId — são contexto extra)
+    // 2) Gaps de papel (sem fieldId — são contexto extra, nunca obrigatórios)
     const roleGapStrings = [...selectedRoles]
       .flatMap(id => roles.find(r => r.id === id)?.gaps_comuns ?? [])
     const seen = new Set(modelGaps.map(g => g.pergunta))
     const roleGaps: Gap[] = [...new Set(roleGapStrings)]
       .filter(q => !seen.has(q))
-      .map(q => ({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [] }))
+      .map(q => ({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [], obrigatorio: false }))
 
     gaps      = [...modelGaps, ...roleGaps]
     gapIndex  = 0
@@ -144,12 +145,21 @@
     screen = gaps.length > 0 ? 'gap' : 'phase'
   }
 
+  let gapError = false
+
   function nextGap() {
+    const current = gaps[gapIndex]
+    if (current.obrigatorio && !gapAnswers[gapIndex]?.trim()) {
+      gapError = true
+      return
+    }
+    gapError = false
     gapIndex++
     if (gapIndex >= gaps.length) screen = 'phase'
   }
 
   function prevGap() {
+    gapError = false
     if (gapIndex > 0) { gapIndex--; return }
     screen = 'narrative'
   }
@@ -426,24 +436,35 @@
               </span>
             </div>
 
-            <h2 class="text-lg font-bold mb-1">Contexto adicional</h2>
+            <div class="flex items-start justify-between mb-1">
+              <h2 class="text-lg font-bold">Contexto adicional</h2>
+              {#if gaps[gapIndex].obrigatorio}
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#f85149]/15
+                             text-[#f85149] border border-[#f85149]/30 flex-shrink-0">
+                  obrigatório
+                </span>
+              {:else}
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#1a1a28]
+                             text-[#4a5060] border border-[#2a2a40] flex-shrink-0">
+                  opcional
+                </span>
+              {/if}
+            </div>
             <p class="text-sm text-[#6e7681] mb-5">
-              Preencha o que souber — lacunas vazias virarão avisos no prompt final.
+              {gaps[gapIndex].obrigatorio
+                ? 'Este campo é necessário para gerar o prompt corretamente.'
+                : 'Preencha se souber — lacunas opcionais podem ser deixadas em branco.'}
             </p>
 
             <!-- pergunta com destaque -->
-            <div class="flex gap-3 p-4 rounded-xl border border-[#f5a623]/20 bg-[#f5a623]/5 mb-4">
-              <span class="text-[#f5a623] text-lg flex-shrink-0">?</span>
-              <div>
-                <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
-                  {gaps[gapIndex].pergunta}
-                </p>
-                {#if gaps[gapIndex].fieldId}
-                  <p class="text-[10px] text-[#f5a623]/50 mt-0.5 uppercase tracking-wider">
-                    campo do modelo
-                  </p>
-                {/if}
-              </div>
+            <div class="flex gap-3 p-4 rounded-xl mb-4 border
+                        {gapError
+                          ? 'border-[#f85149]/40 bg-[#f85149]/5'
+                          : 'border-[#f5a623]/20 bg-[#f5a623]/5'}">
+              <span class="text-lg flex-shrink-0 {gapError ? 'text-[#f85149]' : 'text-[#f5a623]'}">?</span>
+              <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
+                {gaps[gapIndex].pergunta}
+              </p>
             </div>
 
             <!-- select: botões de opção -->
@@ -451,7 +472,7 @@
               <div class="flex flex-wrap gap-2 mb-4">
                 {#each gaps[gapIndex].opcoes as opt}
                   <button
-                    on:click={() => gapAnswers[gapIndex] = opt}
+                    on:click={() => { gapAnswers[gapIndex] = opt; gapError = false }}
                     class="px-4 py-1.5 rounded-lg border text-sm transition-all
                            {gapAnswers[gapIndex] === opt
                              ? 'border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]'
@@ -464,13 +485,21 @@
 
             <!-- textarea para text / textarea / list / role gaps -->
             {#if gaps[gapIndex].tipo !== 'select'}
-              <textarea bind:value={gapAnswers[gapIndex]}
-                placeholder="Digite sua resposta... (deixe vazio para pular)"
+              <textarea
+                bind:value={gapAnswers[gapIndex]}
+                on:input={() => gapError = false}
+                placeholder={gaps[gapIndex].obrigatorio ? 'Campo obrigatório — preencha para continuar' : 'Digite sua resposta... (deixe vazio para pular)'}
                 rows="5"
-                class="w-full px-4 py-3 rounded-xl border border-[#1a1a28]
-                       bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50] text-sm
-                       resize-none focus:outline-none focus:border-[#f5a623]/60
-                       transition-colors leading-relaxed" />
+                class="w-full px-4 py-3 rounded-xl border text-sm
+                       bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50]
+                       resize-none focus:outline-none transition-colors leading-relaxed
+                       {gapError
+                         ? 'border-[#f85149]/60 focus:border-[#f85149]'
+                         : 'border-[#1a1a28] focus:border-[#f5a623]/60'}" />
+            {/if}
+
+            {#if gapError}
+              <p class="text-xs text-[#f85149] mt-2">⚠ Este campo é obrigatório para continuar.</p>
             {/if}
 
             <div class="flex justify-end mt-4">
