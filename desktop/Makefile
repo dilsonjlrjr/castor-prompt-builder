@@ -1,6 +1,6 @@
-APP     := castor-builder
-OUTDIR  := ../dist
-WAILS   := $(shell go env GOPATH)/bin/wails
+APP    := castor-builder
+OUTDIR := ../dist
+WAILS  := $(shell command -v wails 2>/dev/null || echo "$(shell go env GOPATH)/bin/wails")
 
 .PHONY: all macos windows linux clean
 
@@ -12,7 +12,7 @@ macos:
 	@echo "▶ Building macOS universal..."
 	@mkdir -p $(OUTDIR)
 	$(WAILS) build -clean -platform darwin/universal -o $(APP)
-	@cp -r build/bin/$(APP).app $(OUTDIR)/$(APP)-macos.app
+	@cp -r "build/bin/CASTOR Builder.app" $(OUTDIR)/$(APP)-macos.app
 	@echo "✓ macOS → $(OUTDIR)/$(APP)-macos.app"
 	@if command -v create-dmg >/dev/null 2>&1; then \
 		create-dmg \
@@ -39,7 +39,7 @@ windows:
 		exit 1; \
 	fi
 	$(WAILS) build -clean -platform windows/amd64 -o $(APP)
-	@cp build/bin/$(APP).exe $(OUTDIR)/$(APP)-windows-amd64.exe
+	@cp "build/bin/$(APP)" $(OUTDIR)/$(APP)-windows-amd64.exe
 	@echo "✓ Windows → $(OUTDIR)/$(APP)-windows-amd64.exe"
 
 # ── Linux ────────────────────────────────────────────────────────────────────
@@ -50,11 +50,11 @@ linux:
 	@if ! command -v docker >/dev/null 2>&1; then \
 		echo "✗ Docker não encontrado."; exit 1; \
 	fi
-	docker run --rm \
+	docker run --rm --platform linux/amd64 \
 		-v "$$(pwd)/..:/app" \
 		-w /app/desktop \
-		ghcr.io/wailsapp/wails-linux-builder:latest \
-		wails build -clean -platform linux/amd64 -o $(APP)
+		castor-linux-builder \
+		build -platform linux/amd64 -s -o $(APP)
 	@cp build/bin/$(APP) $(OUTDIR)/$(APP)-linux-amd64
 	@echo "✓ Linux → $(OUTDIR)/$(APP)-linux-amd64"
 
