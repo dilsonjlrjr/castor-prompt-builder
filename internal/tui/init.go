@@ -14,7 +14,7 @@ func New(models []*parser.Model, roles []*parser.Role) AppModel {
 	ti.Focus()
 
 	ta := textarea.New()
-	ta.Placeholder = "Descreva a tarefa livremente...\n(⌃S para confirmar)"
+	ta.Placeholder = "Descreva a tarefa livremente...\n(Ctrl+S para confirmar)"
 	ta.SetWidth(50)
 	ta.SetHeight(8)
 	ta.Focus()
