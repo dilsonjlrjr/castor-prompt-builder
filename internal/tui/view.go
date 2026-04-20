@@ -43,11 +43,28 @@ func badge(txt string) string {
 	return styleBadge.Render(" " + txt + " ")
 }
 
+// siglas mapeia o ID do modelo para o significado do acrônimo
+var siglas = map[string]string{
+	"rtf":    "Role · Task · Format",
+	"race":   "Role · Action · Context · Expectation",
+	"risen":  "Role · Input · Steps · Expectation · Narrowing",
+	"create": "Context · Role · Examples · Audience · Tone · Expectation",
+}
+
+const propositoCastor = "Construa prompts estruturados para LLMs em segundos.\nEscolha um framework, descreva sua tarefa e o CASTOR monta o prompt ideal."
+
 // --- Selecionar Modelo ---
 
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
 	sb.WriteString(renderCastor() + "\n\n")
+
+	// propósito
+	sb.WriteString(lipgloss.NewStyle().
+		Foreground(colorText).
+		PaddingLeft(1).
+		Render(propositoCastor) + "\n\n")
+
 	sb.WriteString(styleSubtitle.Render("Selecione o modelo de prompt:") + "\n\n")
 
 	for i, mod := range m.models {
@@ -57,11 +74,17 @@ func (m AppModel) viewSelectModel() string {
 			cursor = styleSelected.Render("> ")
 			style = styleSelected
 		}
+		// nome do modelo
 		line := cursor + style.Render(mod.Nome)
-		if mod.Descricao != "" {
-			line += styleMuted.Render("  — " + mod.Descricao)
+		// significado do acrônimo
+		if sig, ok := siglas[mod.ID]; ok {
+			line += styleMuted.Render("  (" + sig + ")")
 		}
 		sb.WriteString(line + "\n")
+		// descrição em linha separada, indentada
+		if mod.Descricao != "" {
+			sb.WriteString(styleMuted.Render("     "+mod.Descricao) + "\n")
+		}
 	}
 
 	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   i mais informações   q sair"))
