@@ -4,8 +4,8 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dilsonrabelo/castor-prompt-builder/internal/engine"
-	"github.com/dilsonrabelo/castor-prompt-builder/internal/parser"
+	"github.com/dilsonrabelo/castor-prompt-builder/pkg/engine"
+	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
 )
 
 func New(models []*parser.Model, roles []*parser.Role) AppModel {

@@ -10,7 +10,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/dilsonrabelo/castor-prompt-builder/internal/engine"
+	"github.com/dilsonrabelo/castor-prompt-builder/pkg/engine"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/dilsonrabelo/castor-prompt-builder/internal/parser"
+	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
 )
 
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
