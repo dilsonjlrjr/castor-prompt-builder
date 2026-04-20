@@ -69,6 +69,14 @@ func (m AppModel) viewSelectModel() string {
 		styleSubtitle.Render("Selecione o modelo de prompt:") +
 			"  " + styleMuted.Render("(pressione i para mais informações)") + "\n\n")
 
+	// largura máxima dos nomes para alinhamento tabular
+	maxNome := 0
+	for _, mod := range m.models {
+		if len(mod.Nome) > maxNome {
+			maxNome = len(mod.Nome)
+		}
+	}
+
 	for i, mod := range m.models {
 		cursor := "  "
 		style := styleNormal
@@ -76,13 +84,9 @@ func (m AppModel) viewSelectModel() string {
 			cursor = styleSelected.Render("> ")
 			style = styleSelected
 		}
-		line := cursor + style.Render(mod.Nome)
-		if mod.Descricao != "" {
-			sb.WriteString(line + "\n")
-			sb.WriteString(styleMuted.Render("     "+mod.Descricao) + "\n")
-		} else {
-			sb.WriteString(line + "\n")
-		}
+		padding := strings.Repeat(" ", maxNome-len(mod.Nome)+2)
+		line := cursor + style.Render(mod.Nome) + padding + styleMuted.Render(mod.Descricao)
+		sb.WriteString(line + "\n")
 	}
 
 	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   q sair"))
