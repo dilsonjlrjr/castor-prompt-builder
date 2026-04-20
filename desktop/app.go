@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"embed"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,41 +12,66 @@ import (
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
 )
 
-// App é o struct principal exposto ao frontend via Wails.
-type App struct {
-	ctx    context.Context
-	models []*parser.Model
-	roles  []*parser.Role
-}
+//go:embed bundled/*.md
+var bundledFS embed.FS
 
-func NewApp() *App {
-	return &App{}
-}
-
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-
-	base := execDir()
-
-	models, err := parser.LoadAllModels(filepath.Join(base, "models"))
+// userDataDir retorna ~/.castorprompt
+func userDataDir() (string, error) {
+	home, err := os.UserHomeDir()
 	if err != nil {
-		models = []*parser.Model{}
+		return "", err
 	}
-	a.models = models
-
-	roles, err := parser.LoadAllRoles(filepath.Join(base, "roles"))
-	if err != nil {
-		roles = []*parser.Role{}
-	}
-	a.roles = roles
+	return filepath.Join(home, ".castorprompt"), nil
 }
 
+// ensureUserDir cria ~/.castorprompt na primeira execução:
+//   - models/ com os 4 modelos embutidos
+//   - roles/ vazio (o usuário adiciona os seus)
+func ensureUserDir() {
+	base, err := userDataDir()
+	if err != nil {
+		return
+	}
+	// já existe → nada a fazer
+	if _, err := os.Stat(base); err == nil {
+		return
+	}
+	modelsDir := filepath.Join(base, "models")
+	rolesDir := filepath.Join(base, "roles")
+	_ = os.MkdirAll(modelsDir, 0o755)
+	_ = os.MkdirAll(rolesDir, 0o755)
+
+	// escreve os modelos embutidos
+	entries, _ := fs.ReadDir(bundledFS, "bundled")
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		data, err := bundledFS.ReadFile("bundled/" + e.Name())
+		if err != nil {
+			continue
+		}
+		_ = os.WriteFile(filepath.Join(modelsDir, e.Name()), data, 0o644)
+	}
+}
+
+// execDir resolve o diretório base onde ficam models/ e roles/.
+//
+//   - Produção: ~/.castorprompt  (criado por ensureUserDir)
+//   - Desenvolvimento: raiz do projeto (detectada pelo cwd)
 func execDir() string {
+	// 1. Diretório do usuário (produção)
+	if base, err := userDataDir(); err == nil {
+		if _, err := os.Stat(filepath.Join(base, "models")); err == nil {
+			return base
+		}
+	}
+
+	// 2. Raiz do projeto (desenvolvimento) — busca pelo cwd e seus pais
 	candidates := []string{}
 	if cwd, err := os.Getwd(); err == nil {
 		candidates = append(candidates,
 			cwd,
-			filepath.Dir(cwd),
 			filepath.Join(cwd, ".."),
 			filepath.Join(cwd, "../.."),
 		)
@@ -68,6 +95,36 @@ func execDir() string {
 		}
 	}
 	return "."
+}
+
+// App é o struct principal exposto ao frontend via Wails.
+type App struct {
+	ctx    context.Context
+	models []*parser.Model
+	roles  []*parser.Role
+}
+
+func NewApp() *App {
+	return &App{}
+}
+
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+
+	ensureUserDir()
+	base := execDir()
+
+	models, err := parser.LoadAllModels(filepath.Join(base, "models"))
+	if err != nil {
+		models = []*parser.Model{}
+	}
+	a.models = models
+
+	roles, err := parser.LoadAllRoles(filepath.Join(base, "roles"))
+	if err != nil {
+		roles = []*parser.Role{}
+	}
+	a.roles = roles
 }
 
 // ---- DTOs expostos ao frontend ----
