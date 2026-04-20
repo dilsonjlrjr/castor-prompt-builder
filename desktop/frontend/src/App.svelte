@@ -28,7 +28,7 @@
   let phases: Step[] = []
 
   let resultContent = ''
-  let resultPath    = ''
+  let resultPath    = '' // mantido para compatibilidade com o tipo retornado
   let resultError   = ''
   let building      = false
   let copied        = false
@@ -531,9 +531,6 @@
                   {copied ? '✓ Copiado!' : '⎘ Copiar'}
                 </button>
               </div>
-              {#if resultPath}
-                <p class="text-[10px] text-[#3a3a50] mb-3 truncate">📄 {resultPath}</p>
-              {/if}
             {/if}
 
             <pre class="flex-1 min-h-0 overflow-y-auto rounded-xl border border-[#1a1a28]

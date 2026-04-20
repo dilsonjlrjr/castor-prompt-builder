@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/engine"
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
@@ -42,19 +41,42 @@ func (a *App) startup(ctx context.Context) {
 	a.roles = roles
 }
 
-// execDir retorna o diretório do executável (ou cwd em dev).
+// execDir localiza o diretório raiz do projeto buscando a pasta models/.
+// Funciona tanto em dev (wails dev) quanto no .app distribuído.
 func execDir() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return "."
+	candidates := []string{}
+
+	// 1) relativo ao cwd (wails dev roda de dentro de desktop/)
+	if cwd, err := os.Getwd(); err == nil {
+		candidates = append(candidates,
+			cwd,
+			filepath.Dir(cwd),           // desktop/ → project root
+			filepath.Join(cwd, ".."),
+			filepath.Join(cwd, "../.."),
+		)
 	}
-	// Em desenvolvimento wails usa um temp path; volta para cwd
-	dir := filepath.Dir(exe)
-	if strings.Contains(dir, "go-build") || strings.Contains(dir, "tmp") {
-		cwd, _ := os.Getwd()
-		return filepath.Dir(cwd) // desktop/ → project root
+
+	// 2) relativo ao executável
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		candidates = append(candidates,
+			dir,
+			filepath.Join(dir, ".."),
+			filepath.Join(dir, "../.."),
+			filepath.Join(dir, "../../.."),
+		)
 	}
-	return filepath.Join(dir, "..")
+
+	for _, c := range candidates {
+		abs, err := filepath.Abs(c)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(abs, "models")); err == nil {
+			return abs
+		}
+	}
+	return "."
 }
 
 // ---- DTOs expostos ao frontend ----
@@ -177,25 +199,5 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 
 	rendered := engine.Render(modelo.Template, vals)
 
-	// salva arquivo
-	date := time.Now().Format("20060102")
-	slug := slugifyStr(req.Narrativa)
-	filename := fmt.Sprintf("%s_%s_%s.md", date, roleID, slug)
-
-	base := execDir()
-	promptsDir := filepath.Join(base, "prompts")
-	_ = os.MkdirAll(promptsDir, 0755)
-	path := filepath.Join(promptsDir, filename)
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("# Prompt — %s\n", roleNome))
-	sb.WriteString(fmt.Sprintf("_Modelo: %s | Gerado em: %s_\n\n", modelo.Nome, time.Now().Format("2006-01-02")))
-	sb.WriteString("---\n\n")
-	sb.WriteString(rendered)
-
-	if err := os.WriteFile(path, []byte(sb.String()), 0644); err != nil {
-		return BuildResultDTO{Conteudo: rendered, Erro: err.Error()}
-	}
-
-	return BuildResultDTO{Conteudo: rendered, Caminho: path}
+	return BuildResultDTO{Conteudo: rendered}
 }
