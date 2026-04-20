@@ -13,3 +13,7 @@ export function GetModels() {
 export function GetRoles() {
   return window['go']['main']['App']['GetRoles']();
 }
+
+export function IsFirstRun() {
+  return window['go']['main']['App']['IsFirstRun']();
+}

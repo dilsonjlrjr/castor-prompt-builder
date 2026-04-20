@@ -27,14 +27,16 @@ func userDataDir() (string, error) {
 // ensureUserDir cria ~/.castorprompt na primeira execução:
 //   - models/ com os 4 modelos embutidos
 //   - roles/ vazio (o usuário adiciona os seus)
-func ensureUserDir() {
+//
+// Retorna true se o diretório foi criado agora (primeira execução).
+func ensureUserDir() bool {
 	base, err := userDataDir()
 	if err != nil {
-		return
+		return false
 	}
 	// já existe → nada a fazer
 	if _, err := os.Stat(base); err == nil {
-		return
+		return false
 	}
 	modelsDir := filepath.Join(base, "models")
 	rolesDir := filepath.Join(base, "roles")
@@ -53,6 +55,7 @@ func ensureUserDir() {
 		}
 		_ = os.WriteFile(filepath.Join(modelsDir, e.Name()), data, 0o644)
 	}
+	return true
 }
 
 // execDir resolve o diretório base onde ficam models/ e roles/.
@@ -99,19 +102,26 @@ func execDir() string {
 
 // App é o struct principal exposto ao frontend via Wails.
 type App struct {
-	ctx    context.Context
-	models []*parser.Model
-	roles  []*parser.Role
+	ctx      context.Context
+	models   []*parser.Model
+	roles    []*parser.Role
+	firstRun bool
 }
 
 func NewApp() *App {
 	return &App{}
 }
 
+// IsFirstRun retorna true se o app está sendo aberto pela primeira vez
+// (o diretório ~/.castorprompt acabou de ser criado).
+func (a *App) IsFirstRun() bool {
+	return a.firstRun
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	ensureUserDir()
+	a.firstRun = ensureUserDir()
 	base := execDir()
 
 	models, err := parser.LoadAllModels(filepath.Join(base, "models"))

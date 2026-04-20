@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { fly } from 'svelte/transition'
-  import { GetModels, GetRoles, BuildPrompt } from '../wailsjs/go/main/App.js'
+  import { fly, fade } from 'svelte/transition'
+  import { cubicOut } from 'svelte/easing'
+  import { GetModels, GetRoles, BuildPrompt, IsFirstRun } from '../wailsjs/go/main/App.js'
   import { main } from '../wailsjs/go/models'
 
   // ---- tipos ----
@@ -37,10 +38,71 @@
   let building      = false
   let copied        = false
 
+  // ---- onboarding carousel ----
+  let showOnboarding = false
+  let onboardSlide   = 0
+
+  const ONBOARD_SLIDES = [
+    {
+      emoji:    '🦫',
+      title:    'Bem-vindo ao CASTOR Builder!',
+      subtitle: 'Sua nova casa para construir prompts estruturados',
+      body:     'Detectamos que é a sua primeira vez por aqui.\nCriamos um diretório especial no seu computador para guardar tudo que o CASTOR precisa.',
+      accent:   '#f5a623',
+    },
+    {
+      emoji:    '🏠',
+      title:    '~/.castorprompt',
+      subtitle: 'Seu diretório pessoal',
+      body:     'Fica na pasta do seu usuário e persiste entre atualizações do app. É aqui que o CASTOR guarda seus dados — modelos, papéis e configurações futuras.',
+      accent:   '#a371f7',
+      code:     '~/.castorprompt/',
+    },
+    {
+      emoji:    '📋',
+      title:    'models/',
+      subtitle: 'Templates de prompt prontos para usar',
+      body:     'Já colocamos os 4 modelos padrão aqui: RTF, RACE, RISEN e CREATE.\nQuer criar o seu próprio? Adicione um arquivo .md seguindo o mesmo formato!',
+      accent:   '#58a6ff',
+      code:     '~/.castorprompt/models/',
+      tags:     ['RTF', 'RACE', 'RISEN', 'CREATE'],
+    },
+    {
+      emoji:    '🎭',
+      title:    'roles/',
+      subtitle: 'Seus papéis personalizados',
+      body:     'Esta pasta está vazia agora. É aqui que você adiciona especialistas customizados — um arquivo .md por papel.\nOs papéis que vieram no app ficam embutidos no binário.',
+      accent:   '#3fb950',
+      code:     '~/.castorprompt/roles/',
+    },
+    {
+      emoji:    '🚀',
+      title:    'Tudo pronto!',
+      subtitle: 'Pode começar a criar',
+      body:     'Escolha um modelo, selecione um papel, descreva sua tarefa — e o CASTOR monta o prompt por você.\nQuanto mais contexto você der, melhor o resultado.',
+      accent:   '#f5a623',
+    },
+  ]
+
+  function nextSlide() {
+    if (onboardSlide < ONBOARD_SLIDES.length - 1) onboardSlide++
+    else showOnboarding = false
+  }
+  function prevSlide() {
+    if (onboardSlide > 0) onboardSlide--
+  }
+
+  const MODEL_TAG_COLOR: Record<string, string> = {
+    RTF: '#3fb950', RACE: '#f5a623', RISEN: '#a371f7', CREATE: '#58a6ff',
+  }
+  function tagColor(t: string) { return MODEL_TAG_COLOR[t] ?? '#6e7681' }
+
   // ---- ciclo de vida ----
   onMount(async () => {
     models = await GetModels()
     roles  = await GetRoles()
+    const first = await IsFirstRun()
+    if (first) { showOnboarding = true; onboardSlide = 0 }
   })
 
   // ---- stepper ----
@@ -208,6 +270,132 @@
 
   <!-- titlebar drag area -->
   <div class="h-8 flex-shrink-0" style="--wails-draggable:drag" />
+
+  <!-- ============================================================
+       ONBOARDING OVERLAY
+  ============================================================= -->
+  {#if showOnboarding}
+    {@const slide = ONBOARD_SLIDES[onboardSlide]}
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
+
+      <!-- backdrop blur -->
+      <div class="absolute inset-0 bg-[#04040a]/80 backdrop-blur-md"></div>
+
+      <!-- card -->
+      <div class="relative z-10 w-[520px] rounded-2xl border border-[#1e1e30]
+                  bg-[#0d0d18] shadow-2xl overflow-hidden"
+           in:fly={{ y: 24, duration: 350, easing: cubicOut }}>
+
+        <!-- barra de progresso topo -->
+        <div class="h-0.5 w-full bg-[#1a1a28]">
+          <div class="h-full transition-all duration-500 rounded-full"
+               style="width:{((onboardSlide + 1) / ONBOARD_SLIDES.length) * 100}%;
+                      background:{slide.accent}"></div>
+        </div>
+
+        <!-- corpo do slide -->
+        <div class="px-10 pt-10 pb-6">
+
+          <!-- emoji grande com glow -->
+          <div class="flex justify-center mb-6">
+            <div class="relative">
+              <div class="absolute inset-0 rounded-full blur-2xl opacity-40"
+                   style="background:{slide.accent}; transform:scale(1.4)"></div>
+              <div class="relative text-7xl leading-none select-none"
+                   style="filter:drop-shadow(0 0 24px {slide.accent}88)">
+                {slide.emoji}
+              </div>
+            </div>
+          </div>
+
+          <!-- textos -->
+          <div class="text-center mb-5">
+            <p class="text-[10px] tracking-[0.25em] uppercase mb-1.5 font-semibold"
+               style="color:{slide.accent}">
+              {slide.subtitle}
+            </p>
+            <h2 class="text-xl font-bold text-[#e8eaf0] mb-4 leading-tight">
+              {slide.title}
+            </h2>
+            <p class="text-sm text-[#7a8494] leading-relaxed whitespace-pre-line">
+              {slide.body}
+            </p>
+          </div>
+
+          <!-- code pill -->
+          {#if slide.code}
+            <div class="flex justify-center mb-4">
+              <div class="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#2a2a42]
+                          bg-[#0a0a14] font-mono text-xs"
+                   style="color:{slide.accent}">
+                <span class="opacity-50">$</span>
+                <span>{slide.code}</span>
+              </div>
+            </div>
+          {/if}
+
+          <!-- tags de modelos -->
+          {#if slide.tags}
+            <div class="flex justify-center gap-2 mb-4 flex-wrap">
+              {#each slide.tags as tag}
+                <span class="px-3 py-1 rounded-md text-xs font-bold border"
+                      style="color:{tagColor(tag)};
+                             background:{tagColor(tag)}15;
+                             border-color:{tagColor(tag)}30">
+                  {tag}
+                </span>
+              {/each}
+            </div>
+          {/if}
+
+        </div>
+
+        <!-- footer: dots + botões -->
+        <div class="flex items-center justify-between px-10 py-5 border-t border-[#1a1a28]">
+
+          <!-- dots -->
+          <div class="flex gap-1.5">
+            {#each ONBOARD_SLIDES as _, i}
+              <button on:click={() => onboardSlide = i}
+                class="rounded-full transition-all duration-300"
+                style="width:{i === onboardSlide ? '20px' : '6px'};
+                       height:6px;
+                       background:{i === onboardSlide ? slide.accent : '#2a2a42'}">
+              </button>
+            {/each}
+          </div>
+
+          <!-- botões nav -->
+          <div class="flex items-center gap-3">
+            {#if onboardSlide > 0}
+              <button on:click={prevSlide}
+                class="px-4 py-2 rounded-lg text-xs text-[#4a5060]
+                       hover:text-[#c9d1d9] transition-colors border border-transparent
+                       hover:border-[#2a2a42]">
+                ← Anterior
+              </button>
+            {:else}
+              <!-- botão pular -->
+              <button on:click={() => showOnboarding = false}
+                class="px-4 py-2 rounded-lg text-xs text-[#3a3a50]
+                       hover:text-[#6e7681] transition-colors">
+                Pular
+              </button>
+            {/if}
+
+            <button on:click={nextSlide}
+              class="px-5 py-2 rounded-lg text-sm font-bold text-black transition-all
+                     hover:brightness-110 active:scale-[0.97]"
+              style="background:{slide.accent}">
+              {onboardSlide < ONBOARD_SLIDES.length - 1 ? 'Próximo →' : '🚀 Começar!'}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  {/if}
 
   <!-- main content -->
   <div class="flex-1 flex overflow-hidden">

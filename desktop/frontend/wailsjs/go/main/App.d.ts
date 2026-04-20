@@ -7,3 +7,5 @@ export function BuildPrompt(arg1:main.BuildRequestDTO):Promise<main.BuildResultD
 export function GetModels():Promise<Array<main.ModelDTO>>;
 
 export function GetRoles():Promise<Array<main.RoleDTO>>;
+
+export function IsFirstRun():Promise<boolean>;
