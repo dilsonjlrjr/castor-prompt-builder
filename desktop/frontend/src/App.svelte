@@ -5,10 +5,14 @@
   import { main } from '../wailsjs/go/models'
 
   // ---- tipos ----
-  type Model  = { id: string; nome: string; descricao: string }
+  type Campo  = { id: string; label: string; tipo: string; obrigatorio: boolean; opcoes?: string[] }
+  type Model  = { id: string; nome: string; descricao: string; campos: Campo[] }
   type Role   = { id: string; nome: string; categoria: string; gaps_comuns: string[] }
   type Step   = { titulo: string; descricao: string }
   type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result'
+
+  // Gap unificado: campo do modelo (tem fieldId) ou gap de papel (fieldId = '')
+  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[] }
 
   // ---- estado ----
   let models:  Model[] = []
@@ -20,7 +24,7 @@
   let roleSearch = ''
 
   let narrative   = ''
-  let gaps: string[] = []
+  let gaps: Gap[] = []
   let gapIndex    = 0
   let gapAnswers: string[] = []
 
@@ -117,9 +121,24 @@
 
   function confirmNarrative() {
     if (!narrative.trim()) return
-    const allGaps = [...selectedRoles]
+
+    // 1) Campos obrigatórios do modelo que não são mapeados automaticamente
+    const modelGaps: Gap[] = (selectedModel?.campos ?? []).map(c => ({
+      fieldId:  c.id,
+      pergunta: c.label,
+      tipo:     c.tipo,
+      opcoes:   c.opcoes ?? [],
+    }))
+
+    // 2) Gaps de papel (sem fieldId — são contexto extra)
+    const roleGapStrings = [...selectedRoles]
       .flatMap(id => roles.find(r => r.id === id)?.gaps_comuns ?? [])
-    gaps      = [...new Set(allGaps)]
+    const seen = new Set(modelGaps.map(g => g.pergunta))
+    const roleGaps: Gap[] = [...new Set(roleGapStrings)]
+      .filter(q => !seen.has(q))
+      .map(q => ({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [] }))
+
+    gaps      = [...modelGaps, ...roleGaps]
     gapIndex  = 0
     gapAnswers = Array(gaps.length).fill('')
     screen = gaps.length > 0 ? 'gap' : 'phase'
@@ -141,7 +160,7 @@
       model_id:    selectedModel!.id,
       role_ids:    [...selectedRoles],
       narrativa:   narrative,
-      gap_answers: gaps.map((p, i) => ({ pergunta: p, resposta: gapAnswers[i] ?? '' })),
+      gap_answers: gaps.map((g, i) => ({ field_id: g.fieldId, pergunta: g.pergunta, resposta: gapAnswers[i] ?? '' })),
       steps:       usePhases ? phases : [],
     }))
     resultContent = result.conteudo
@@ -166,7 +185,7 @@
     phases        = []
     usePhases     = false
     resultContent = ''
-    resultPath    = ''
+    resultPath    = '' as string
     resultError   = ''
     screen        = 'model'
   }
@@ -415,16 +434,44 @@
             <!-- pergunta com destaque -->
             <div class="flex gap-3 p-4 rounded-xl border border-[#f5a623]/20 bg-[#f5a623]/5 mb-4">
               <span class="text-[#f5a623] text-lg flex-shrink-0">?</span>
-              <p class="text-sm text-[#e0e6f0] leading-relaxed">{gaps[gapIndex]}</p>
+              <div>
+                <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
+                  {gaps[gapIndex].pergunta}
+                </p>
+                {#if gaps[gapIndex].fieldId}
+                  <p class="text-[10px] text-[#f5a623]/50 mt-0.5 uppercase tracking-wider">
+                    campo do modelo
+                  </p>
+                {/if}
+              </div>
             </div>
 
-            <textarea bind:value={gapAnswers[gapIndex]}
-              placeholder="Digite sua resposta... (deixe vazio para pular)"
-              rows="5"
-              class="w-full px-4 py-3 rounded-xl border border-[#1a1a28]
-                     bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50] text-sm
-                     resize-none focus:outline-none focus:border-[#f5a623]/60
-                     transition-colors leading-relaxed" />
+            <!-- select: botões de opção -->
+            {#if gaps[gapIndex].tipo === 'select' && gaps[gapIndex].opcoes.length > 0}
+              <div class="flex flex-wrap gap-2 mb-4">
+                {#each gaps[gapIndex].opcoes as opt}
+                  <button
+                    on:click={() => gapAnswers[gapIndex] = opt}
+                    class="px-4 py-1.5 rounded-lg border text-sm transition-all
+                           {gapAnswers[gapIndex] === opt
+                             ? 'border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]'
+                             : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40'}">
+                    {opt}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+
+            <!-- textarea para text / textarea / list / role gaps -->
+            {#if gaps[gapIndex].tipo !== 'select'}
+              <textarea bind:value={gapAnswers[gapIndex]}
+                placeholder="Digite sua resposta... (deixe vazio para pular)"
+                rows="5"
+                class="w-full px-4 py-3 rounded-xl border border-[#1a1a28]
+                       bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50] text-sm
+                       resize-none focus:outline-none focus:border-[#f5a623]/60
+                       transition-colors leading-relaxed" />
+            {/if}
 
             <div class="flex justify-end mt-4">
               <button on:click={nextGap}
