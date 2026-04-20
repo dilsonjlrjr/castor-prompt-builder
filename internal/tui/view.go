@@ -65,7 +65,9 @@ func (m AppModel) viewSelectModel() string {
 		PaddingLeft(1).
 		Render(propositoCastor) + "\n\n")
 
-	sb.WriteString(styleSubtitle.Render("Selecione o modelo de prompt:") + "\n\n")
+	sb.WriteString(
+		styleSubtitle.Render("Selecione o modelo de prompt:") +
+			"  " + styleMuted.Render("(pressione i para mais informações)") + "\n\n")
 
 	for i, mod := range m.models {
 		cursor := "  "
@@ -74,20 +76,16 @@ func (m AppModel) viewSelectModel() string {
 			cursor = styleSelected.Render("> ")
 			style = styleSelected
 		}
-		// nome do modelo
 		line := cursor + style.Render(mod.Nome)
-		// significado do acrônimo
-		if sig, ok := siglas[mod.ID]; ok {
-			line += styleMuted.Render("  (" + sig + ")")
-		}
-		sb.WriteString(line + "\n")
-		// descrição em linha separada, indentada
 		if mod.Descricao != "" {
+			sb.WriteString(line + "\n")
 			sb.WriteString(styleMuted.Render("     "+mod.Descricao) + "\n")
+		} else {
+			sb.WriteString(line + "\n")
 		}
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   i mais informações   q sair"))
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   q sair"))
 	return sb.String()
 }
 
