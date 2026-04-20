@@ -202,6 +202,7 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.gaps) > 0 {
 			m.screen = screenGap
 			m.textInput.Reset()
+			m.textInput.Placeholder = "Digite sua resposta..."
 			m.textInput.Focus()
 		} else {
 			m.screen = screenAskPhase
@@ -222,6 +223,7 @@ func (m AppModel) updateGap(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		if m.gapIndex > 0 {
 			m.gapIndex--
+			m.textInput.Placeholder = "Digite sua resposta..."
 			m.textInput.SetValue(m.gapAnswers[m.gapIndex])
 		} else {
 			m.screen = screenNarrative
@@ -234,6 +236,7 @@ func (m AppModel) updateGap(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.screen = screenAskPhase
 		} else {
 			m.textInput.Reset()
+			m.textInput.Placeholder = "Digite sua resposta..."
 		}
 		return m, nil
 	}
