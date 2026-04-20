@@ -148,12 +148,19 @@
   <div class="flex-1 flex flex-col items-center justify-center px-8 pb-8 overflow-hidden">
 
     <!-- cabeçalho -->
-    <div class="mb-8 text-center">
-      <div class="text-xs tracking-[0.3em] text-[#6e7681] uppercase mb-1">Prompt Builder</div>
-      <h1 class="text-2xl font-bold tracking-wide">
-        <span class="text-[#f5a623]">CASTOR</span>
-        <span class="text-[#e06b2e] ml-2">BUILDER</span>
-      </h1>
+    <div class="mb-8 flex flex-col items-center gap-3">
+      <img
+        src="/castor.png"
+        alt="Castor"
+        class="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(245,166,35,0.4)]"
+      />
+      <div>
+        <div class="text-xs tracking-[0.3em] text-[#6e7681] uppercase mb-1 text-center">Prompt Builder</div>
+        <h1 class="text-2xl font-bold tracking-wide text-center">
+          <span class="text-[#f5a623]">CASTOR</span>
+          <span class="text-[#e06b2e] ml-2">BUILDER</span>
+        </h1>
+      </div>
     </div>
 
     <!-- ================================================
