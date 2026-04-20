@@ -7,55 +7,85 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// screenLines é a altura fixa de toda interface (~550px a 16px/linha).
-const (
-	screenLines   = 35
-	roleListArea  = 23 // linhas disponíveis para a lista de papéis
-	modelInfoArea = 30 // linhas disponíveis para o conteúdo de info do modelo
-)
+// maxHeight é o teto em linhas (~550px a ~16px/linha).
+const maxHeight = 35
 
-// capHeight garante que o conteúdo tenha exatamente screenLines linhas.
-func capHeight(s string) string {
-	lines := strings.Split(s, "\n")
-	if len(lines) > screenLines {
-		lines = lines[:screenLines]
+// effectiveHeight retorna a altura real a usar: mín(terminalHeight, maxHeight).
+func (m AppModel) effectiveHeight() int {
+	if m.height > 0 && m.height < maxHeight {
+		return m.height
 	}
-	for len(lines) < screenLines {
+	return maxHeight
+}
+
+// capHeight garante que o conteúdo tenha exatamente h linhas.
+func capHeight(s string, h int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > h {
+		lines = lines[:h]
+	}
+	for len(lines) < h {
 		lines = append(lines, "")
 	}
 	return strings.Join(lines, "\n")
 }
 
 func (m AppModel) View() string {
+	h := m.effectiveHeight()
 	switch m.screen {
 	case screenSelectModel:
-		return capHeight(m.viewSelectModel())
+		return capHeight(m.viewSelectModel(), h)
 	case screenModelInfo:
-		return capHeight(m.viewModelInfo())
+		return capHeight(m.viewModelInfo(), h)
 	case screenSelectRole:
-		return capHeight(m.viewSelectRole())
+		return capHeight(m.viewSelectRole(), h)
 	case screenNarrative:
-		return capHeight(m.viewNarrative())
+		return capHeight(m.viewNarrative(), h)
 	case screenGap:
-		return capHeight(m.viewGap())
+		return capHeight(m.viewGap(), h)
 	case screenAskPhase:
-		return capHeight(m.viewAskPhase())
+		return capHeight(m.viewAskPhase(), h)
 	case screenDefinePhase:
-		return capHeight(m.viewDefinePhase())
+		return capHeight(m.viewDefinePhase(), h)
 	case screenDone:
-		return capHeight(m.viewDone())
+		return capHeight(m.viewDone(), h)
 	}
 	return ""
 }
 
+// renderCastor adapta o cabeçalho ao espaço disponível.
+// - largura >= mascote+título+4 : lado a lado (layout completo)
+// - largura >= título            : só o título em pixel font
+// - largura pequena              : texto simples centralizado
+func renderCastor(availableWidth int) string {
+	mascot := renderMascote()
+	title := bigTitle()
 
-func renderCastor() string {
-	return lipgloss.JoinHorizontal(
-		lipgloss.Center,
-		renderMascote(),
-		"    ",
-		bigTitle(),
-	)
+	mascotW := 0
+	for _, l := range strings.Split(mascot, "\n") {
+		if w := lipgloss.Width(l); w > mascotW {
+			mascotW = w
+		}
+	}
+	titleW := 0
+	for _, l := range strings.Split(title, "\n") {
+		if w := lipgloss.Width(l); w > titleW {
+			titleW = w
+		}
+	}
+
+	needed := mascotW + 4 + titleW
+	if availableWidth == 0 || availableWidth >= needed {
+		return lipgloss.JoinHorizontal(lipgloss.Center, mascot, "    ", title)
+	}
+	if availableWidth >= titleW+2 {
+		return title
+	}
+	// terminal muito estreito
+	return lipgloss.NewStyle().
+		Foreground(colorPrimary).
+		Bold(true).
+		Render("◆ CASTOR BUILDER ◆")
 }
 
 func badge(txt string) string {
@@ -76,7 +106,7 @@ const propositoCastor = "Construa prompts estruturados para LLMs em segundos.\nE
 
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
-	sb.WriteString(renderCastor() + "\n\n")
+	sb.WriteString(renderCastor(m.width) + "\n\n")
 
 	// propósito
 	sb.WriteString(lipgloss.NewStyle().
@@ -253,7 +283,12 @@ func (m AppModel) viewModelInfo() string {
 		info = "\nNenhuma informação adicional disponível para este modelo."
 	}
 
-	// janela deslizante sobre as linhas do conteúdo
+	// área disponível: altura efetiva − cabeçalho(3) − rodapé(2)
+	infoAreaH := m.effectiveHeight() - 5
+	if infoAreaH < 5 {
+		infoAreaH = 5
+	}
+
 	infoLines := strings.Split(styleNormal.Render(info), "\n")
 	offset := m.modelInfoOffset
 	if offset >= len(infoLines) {
@@ -262,7 +297,7 @@ func (m AppModel) viewModelInfo() string {
 	if offset < 0 {
 		offset = 0
 	}
-	end := offset + modelInfoArea
+	end := offset + infoAreaH
 	if end > len(infoLines) {
 		end = len(infoLines)
 	}
@@ -322,10 +357,16 @@ func (m AppModel) viewSelectRole() string {
 		return sb.String()
 	}
 
-	// monta todas as entradas visíveis (cabeçalhos de categoria + papéis)
+	// área disponível para a lista: altura − cabeçalho(8) − rodapé(2) − indicadores(2)
+	listH := m.effectiveHeight() - 12
+	if listH < 4 {
+		listH = 4
+	}
+
+	// monta todas as entradas (cabeçalhos de categoria + papéis)
 	type entrada struct {
 		texto    string
-		cursorOk bool // true = esta linha é a linha do cursor
+		isCursor bool
 	}
 	var entradas []entrada
 	lastCat := ""
@@ -360,20 +401,20 @@ func (m AppModel) viewSelectRole() string {
 		}
 		entradas = append(entradas, entrada{
 			texto:    cursor + style.Render(check+" "+role.Nome),
-			cursorOk: listIdx == m.roleCursor,
+			isCursor: listIdx == m.roleCursor,
 		})
 	}
 
 	// janela centrada no cursor
-	half := roleListArea / 2
+	half := listH / 2
 	start := cursorLinha - half
 	if start < 0 {
 		start = 0
 	}
-	end := start + roleListArea
+	end := start + listH
 	if end > len(entradas) {
 		end = len(entradas)
-		if start = end - roleListArea; start < 0 {
+		if start = end - listH; start < 0 {
 			start = 0
 		}
 	}

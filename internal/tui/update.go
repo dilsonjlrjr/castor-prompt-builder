@@ -14,6 +14,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textArea.SetWidth(msg.Width - 6)
+		// textarea height: efectiveHeight − cabeçalho(4) − rodapé(2) − margens(4)
+		taH := msg.Height - 10
+		if taH < 4 {
+			taH = 4
+		}
+		if taH > 12 {
+			taH = 12
+		}
+		m.textArea.SetHeight(taH)
 		return m, nil
 
 	case tea.KeyMsg:
