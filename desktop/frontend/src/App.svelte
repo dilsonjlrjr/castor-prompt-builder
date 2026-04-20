@@ -59,9 +59,12 @@
         r.categoria.toLowerCase().includes(roleSearch.toLowerCase()))
     : roles
 
-  function rolesInCat(cat: string) {
-    return filteredRoles.filter(r => r.categoria === cat)
-  }
+  // rolesByCategory é $: para que o Svelte rastreie filteredRoles como dependência
+  // e re-renderize o template quando a busca mudar
+  $: rolesByCategory = categories.reduce((acc, cat) => {
+    acc[cat] = filteredRoles.filter(r => r.categoria === cat)
+    return acc
+  }, {} as Record<string, Role[]>)
 
   const CAT_ICON: Record<string, string> = {
     arquitetura: '🏗️', frontend: '🎨', backend: '⚙️',
@@ -323,25 +326,24 @@
 
             <!-- lista categorizada -->
             <div class="flex flex-col gap-0.5 mb-5">
-              {#each categories as cat}
-                {#if rolesInCat(cat).length > 0}
+              {#each categories as cat (cat)}
+                {#if (rolesByCategory[cat] ?? []).length > 0}
                   <div class="flex items-center gap-2 mt-4 mb-1.5">
                     <span class="text-base">{catIcon(cat)}</span>
                     <span class="text-[10px] font-semibold tracking-widest uppercase text-[#4a5060]">
                       {catLabel(cat)}
                     </span>
                   </div>
-                  {#each rolesInCat(cat) as role}
-                    {@const sel = selectedRoles.has(role.id)}
+                  {#each rolesByCategory[cat] as role (role.id)}
                     <button on:click={() => toggleRole(role.id)}
                       class="flex items-center gap-3 w-full px-3 py-2 rounded-lg
                              border transition-all text-left text-sm
-                             {sel
+                             {selectedRoles.has(role.id)
                                ? 'border-[#f5a623]/40 bg-[#f5a623]/8 text-[#f5a623]'
                                : 'border-transparent hover:border-[#1a1a28] hover:bg-[#0d0d18] text-[#c9d1d9]'}">
                       <span class="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[10px] transition-all
-                                   {sel ? 'bg-[#f5a623] text-black font-bold' : 'border border-[#2a2a40] text-[#4a5060]'}">
-                        {sel ? '✓' : ''}
+                                   {selectedRoles.has(role.id) ? 'bg-[#f5a623] text-black font-bold' : 'border border-[#2a2a40] text-[#4a5060]'}">
+                        {selectedRoles.has(role.id) ? '✓' : ''}
                       </span>
                       <span class="truncate">{role.nome}</span>
                     </button>
