@@ -307,7 +307,7 @@ func (m AppModel) viewSelectRole() string {
 		sb.WriteString(cursor + style.Render(check+" "+role.Nome) + "\n")
 	}
 
-	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc voltar"))
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc limpar busca / voltar   (digite para buscar)"))
 	return sb.String()
 }
 

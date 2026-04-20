@@ -62,7 +62,8 @@ func (m AppModel) updateSelectModel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.roleSearch = ""
 		m.textInput.Reset()
 		m.textInput.Placeholder = "🔍 Buscar papel..."
-		m.textInput.Focus()
+		cmd := m.textInput.Focus()
+		return m, cmd
 	}
 	return m, nil
 }
@@ -80,7 +81,8 @@ func (m AppModel) updateModelInfo(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.roleSearch = ""
 		m.textInput.Reset()
 		m.textInput.Placeholder = "🔍 Buscar papel..."
-		m.textInput.Focus()
+		cmd := m.textInput.Focus()
+		return m, cmd
 	}
 	return m, nil
 }
