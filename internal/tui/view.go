@@ -7,24 +7,43 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// screenLines é a altura fixa de toda interface (~550px a 16px/linha).
+const (
+	screenLines   = 35
+	roleListArea  = 23 // linhas disponíveis para a lista de papéis
+	modelInfoArea = 30 // linhas disponíveis para o conteúdo de info do modelo
+)
+
+// capHeight garante que o conteúdo tenha exatamente screenLines linhas.
+func capHeight(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > screenLines {
+		lines = lines[:screenLines]
+	}
+	for len(lines) < screenLines {
+		lines = append(lines, "")
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (m AppModel) View() string {
 	switch m.screen {
 	case screenSelectModel:
-		return m.viewSelectModel()
+		return capHeight(m.viewSelectModel())
 	case screenModelInfo:
-		return m.viewModelInfo()
+		return capHeight(m.viewModelInfo())
 	case screenSelectRole:
-		return m.viewSelectRole()
+		return capHeight(m.viewSelectRole())
 	case screenNarrative:
-		return m.viewNarrative()
+		return capHeight(m.viewNarrative())
 	case screenGap:
-		return m.viewGap()
+		return capHeight(m.viewGap())
 	case screenAskPhase:
-		return m.viewAskPhase()
+		return capHeight(m.viewAskPhase())
 	case screenDefinePhase:
-		return m.viewDefinePhase()
+		return capHeight(m.viewDefinePhase())
 	case screenDone:
-		return m.viewDone()
+		return capHeight(m.viewDone())
 	}
 	return ""
 }
@@ -234,12 +253,30 @@ func (m AppModel) viewModelInfo() string {
 		info = "\nNenhuma informação adicional disponível para este modelo."
 	}
 
+	// janela deslizante sobre as linhas do conteúdo
+	infoLines := strings.Split(styleNormal.Render(info), "\n")
+	offset := m.modelInfoOffset
+	if offset >= len(infoLines) {
+		offset = len(infoLines) - 1
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	end := offset + modelInfoArea
+	if end > len(infoLines) {
+		end = len(infoLines)
+	}
+	visibleInfo := strings.Join(infoLines[offset:end], "\n")
+
 	var sb strings.Builder
 	sb.WriteString(styleHeader.Render(" "+model.Nome+" ") + "  " + badge(model.ID) + "\n")
 	sb.WriteString(styleMuted.Render(model.Descricao) + "\n")
 	sb.WriteString(strings.Repeat("─", 60) + "\n")
-	sb.WriteString(styleNormal.Render(info) + "\n")
-	sb.WriteString(styleHelp.Render("Esc voltar   Enter selecionar este modelo"))
+	sb.WriteString(visibleInfo + "\n")
+	if end < len(infoLines) {
+		sb.WriteString(styleMuted.Render("  ↓ mais abaixo (j / ↓)") + "\n")
+	}
+	sb.WriteString(styleHelp.Render("↑↓ rolar   Esc voltar   Enter selecionar este modelo"))
 	return sb.String()
 }
 
@@ -263,7 +300,12 @@ func (m AppModel) viewSelectRole() string {
 	model := m.models[m.selectedModel]
 	filtered := m.filteredRoleIndices()
 
-	selectedCount := len(m.selectedRoles)
+	selectedCount := 0
+	for _, sel := range m.selectedRoles {
+		if sel {
+			selectedCount++
+		}
+	}
 	titulo := "Selecione o(s) papel(eis):"
 	if selectedCount > 0 {
 		titulo += fmt.Sprintf("  %s", badge(fmt.Sprintf("%d selecionado(s)", selectedCount)))
@@ -272,25 +314,36 @@ func (m AppModel) viewSelectRole() string {
 	var sb strings.Builder
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("modelo: "+model.Nome) + "\n\n")
 	sb.WriteString(styleSubtitle.Render(titulo) + "\n\n")
-
-	// campo de busca
 	sb.WriteString(styleBorder.Render(m.textInput.View()) + "\n\n")
 
 	if len(filtered) == 0 {
 		sb.WriteString(styleMuted.Render("  Nenhum papel encontrado.") + "\n")
+		sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc limpar busca / voltar   (digite para buscar)"))
+		return sb.String()
 	}
 
+	// monta todas as entradas visíveis (cabeçalhos de categoria + papéis)
+	type entrada struct {
+		texto    string
+		cursorOk bool // true = esta linha é a linha do cursor
+	}
+	var entradas []entrada
 	lastCat := ""
+	cursorLinha := 0
+
 	for listIdx, globalIdx := range filtered {
 		role := m.roles[globalIdx]
-
-		// cabeçalho de categoria
 		cat := role.Categoria
 		if catNome, ok := nomeCategoria[cat]; ok {
 			cat = catNome
 		}
 		if cat != lastCat {
-			sb.WriteString("\n" + styleSelected.Render("  ── "+strings.ToUpper(cat)+" ──") + "\n")
+			if len(entradas) > 0 {
+				entradas = append(entradas, entrada{texto: ""})
+			}
+			entradas = append(entradas, entrada{
+				texto: styleSelected.Render("  ── " + strings.ToUpper(cat) + " ──"),
+			})
 			lastCat = cat
 		}
 
@@ -300,11 +353,39 @@ func (m AppModel) viewSelectRole() string {
 		if listIdx == m.roleCursor {
 			cursor = "> "
 			style = styleSelected
+			cursorLinha = len(entradas)
 		}
 		if m.selectedRoles[globalIdx] {
 			check = "[✓]"
 		}
-		sb.WriteString(cursor + style.Render(check+" "+role.Nome) + "\n")
+		entradas = append(entradas, entrada{
+			texto:    cursor + style.Render(check+" "+role.Nome),
+			cursorOk: listIdx == m.roleCursor,
+		})
+	}
+
+	// janela centrada no cursor
+	half := roleListArea / 2
+	start := cursorLinha - half
+	if start < 0 {
+		start = 0
+	}
+	end := start + roleListArea
+	if end > len(entradas) {
+		end = len(entradas)
+		if start = end - roleListArea; start < 0 {
+			start = 0
+		}
+	}
+
+	if start > 0 {
+		sb.WriteString(styleMuted.Render("  ↑ mais acima") + "\n")
+	}
+	for _, e := range entradas[start:end] {
+		sb.WriteString(e.texto + "\n")
+	}
+	if end < len(entradas) {
+		sb.WriteString(styleMuted.Render("  ↓ mais abaixo") + "\n")
 	}
 
 	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Espaço marcar/desmarcar   Enter confirmar   Esc limpar busca / voltar   (digite para buscar)"))

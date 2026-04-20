@@ -55,6 +55,7 @@ func (m AppModel) updateSelectModel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "i":
 		m.screen = screenModelInfo
+		m.modelInfoOffset = 0
 	case "enter":
 		m.screen = screenSelectRole
 		m.roleCursor = 0
@@ -74,6 +75,12 @@ func (m AppModel) updateModelInfo(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "esc":
 		m.screen = screenSelectModel
+	case "up", "k":
+		if m.modelInfoOffset > 0 {
+			m.modelInfoOffset--
+		}
+	case "down", "j":
+		m.modelInfoOffset++
 	case "enter":
 		m.screen = screenSelectRole
 		m.roleCursor = 0

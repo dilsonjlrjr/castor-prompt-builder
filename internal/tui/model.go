@@ -48,8 +48,11 @@ type AppModel struct {
 	gapIndex     int        // gap atual
 	gapAnswers   []string   // respostas
 
+	// scroll de telas
+	modelInfoOffset int // linha inicial do scroll em viewModelInfo
+
 	// fases
-	askPhaseChoice int  // 0=não definido, 1=sim, 2=não
+	askPhaseChoice int // 0=não definido, 1=sim, 2=não
 	phaseCount     int
 	phaseIndex     int
 	phaseTitle     string
