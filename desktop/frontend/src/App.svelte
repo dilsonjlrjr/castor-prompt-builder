@@ -147,34 +147,42 @@
   <!-- conteúdo centralizado -->
   <div class="flex-1 flex flex-col items-center justify-center px-8 pb-8 overflow-hidden">
 
-    <!-- cabeçalho -->
-    <div class="mb-8 flex flex-col items-center gap-3">
-      <img
-        src="/castor.png"
-        alt="Castor"
-        class="w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(245,166,35,0.4)]"
-      />
-      <div>
-        <div class="text-xs tracking-[0.3em] text-[#6e7681] uppercase mb-1 text-center">Prompt Builder</div>
-        <h1 class="text-2xl font-bold tracking-wide text-center">
-          <span class="text-[#f5a623]">CASTOR</span>
-          <span class="text-[#e06b2e] ml-2">BUILDER</span>
-        </h1>
+    <!-- layout duas colunas: mascote | conteúdo -->
+    <div class="flex items-start gap-8 w-full">
+
+      <!-- coluna esquerda: mascote fixo -->
+      <div class="flex-shrink-0 flex flex-col items-center pt-2">
+        <img
+          src="/castor.png"
+          alt="Castor"
+          class="w-28 h-28 object-contain drop-shadow-[0_0_16px_rgba(245,166,35,0.45)]"
+        />
       </div>
-    </div>
+
+      <!-- coluna direita: título + telas -->
+      <div class="flex flex-col flex-1 min-w-0">
+
+        <!-- cabeçalho -->
+        <div class="mb-6">
+          <div class="text-xs tracking-[0.3em] text-[#6e7681] uppercase mb-1">Prompt Builder</div>
+          <h1 class="text-2xl font-bold tracking-wide">
+            <span class="text-[#f5a623]">CASTOR</span>
+            <span class="text-[#e06b2e] ml-2">BUILDER</span>
+          </h1>
+        </div>
 
     <!-- ================================================
          TELA: SELECIONAR MODELO
     ================================================= -->
     {#if screen === 'model'}
-      <p class="text-[#6e7681] text-sm mb-6 text-center max-w-md">
+      <p class="text-[#6e7681] text-sm mb-6 max-w-md">
         Construa prompts estruturados para LLMs em segundos.<br>
         Escolha um framework, descreva sua tarefa e o CASTOR monta o prompt ideal.
       </p>
 
       <p class="text-[#f5a623] text-sm mb-4">Selecione o modelo de prompt:</p>
 
-      <div class="flex flex-col gap-2 w-full max-w-lg">
+      <div class="flex flex-col gap-2 w-full">
         {#each models as m}
           <button
             on:click={() => confirmModel(m)}
@@ -194,7 +202,7 @@
          TELA: SELECIONAR PAPEL
     ================================================= -->
     {:else if screen === 'role'}
-      <div class="flex items-center gap-3 mb-5 w-full max-w-lg">
+      <div class="flex items-center gap-3 mb-5 w-full">
         <button on:click={() => screen = 'model'} class="text-[#6e7681] hover:text-[#c9d1d9] text-sm">← voltar</button>
         <span class="text-[#f5a623] text-sm font-bold">{selectedModel?.nome}</span>
         {#if selectedRoles.size > 0}
@@ -204,19 +212,19 @@
         {/if}
       </div>
 
-      <p class="text-[#f5a623] text-sm mb-3 w-full max-w-lg">Selecione o(s) papel(eis):</p>
+      <p class="text-[#f5a623] text-sm mb-3 w-full">Selecione o(s) papel(eis):</p>
 
       <!-- busca -->
       <input
         bind:value={roleSearch}
         placeholder="🔍 Buscar papel..."
-        class="w-full max-w-lg px-3 py-2 mb-4 rounded-lg border border-[#1e1e30]
+        class="w-fullpx-3 py-2 mb-4 rounded-lg border border-[#1e1e30]
                bg-[#13131f] text-[#c9d1d9] placeholder-[#6e7681] text-sm
                focus:outline-none focus:border-[#f5a623] transition-colors"
       />
 
       <!-- lista com scroll -->
-      <div class="w-full max-w-lg flex-1 overflow-y-auto min-h-0">
+      <div class="w-fullflex-1 overflow-y-auto min-h-0">
         {#each categories as cat}
           {#if rolesInCat(cat).length > 0}
             <div class="text-[#6e7681] text-xs tracking-widest uppercase mt-4 mb-1 px-1">
@@ -252,20 +260,20 @@
          TELA: NARRATIVA
     ================================================= -->
     {:else if screen === 'narrative'}
-      <div class="flex items-center gap-3 mb-5 w-full max-w-lg">
+      <div class="flex items-center gap-3 mb-5 w-full">
         <button on:click={() => screen = 'role'} class="text-[#6e7681] hover:text-[#c9d1d9] text-sm">← voltar</button>
         <span class="text-[#f5a623] text-sm font-bold truncate">
           {[...selectedRoles].map(id => roles.find(r => r.id === id)?.nome).join(' + ')}
         </span>
       </div>
 
-      <p class="text-[#f5a623] text-sm mb-3 w-full max-w-lg">Descreva a tarefa livremente:</p>
+      <p class="text-[#f5a623] text-sm mb-3 w-full">Descreva a tarefa livremente:</p>
 
       <textarea
         bind:value={narrative}
         placeholder="O que você precisa fazer? Descreva com o máximo de contexto possível..."
         rows="8"
-        class="w-full max-w-lg px-4 py-3 rounded-lg border border-[#1e1e30]
+        class="w-fullpx-4 py-3 rounded-lg border border-[#1e1e30]
                bg-[#13131f] text-[#c9d1d9] placeholder-[#6e7681] text-sm resize-none
                focus:outline-none focus:border-[#f5a623] transition-colors leading-relaxed"
       />
@@ -283,17 +291,17 @@
          TELA: GAPS
     ================================================= -->
     {:else if screen === 'gap'}
-      <div class="text-xs text-[#6e7681] mb-2 w-full max-w-lg">
+      <div class="text-xs text-[#6e7681] mb-2 w-full">
         lacuna {gapIndex + 1} de {gaps.length}
       </div>
 
-      <p class="text-[#f5a623] text-sm mb-4 w-full max-w-lg">{gaps[gapIndex]}</p>
+      <p class="text-[#f5a623] text-sm mb-4 w-full">{gaps[gapIndex]}</p>
 
       <textarea
         bind:value={gapAnswers[gapIndex]}
         placeholder="Digite sua resposta... (deixe vazio para pular)"
         rows="4"
-        class="w-full max-w-lg px-4 py-3 rounded-lg border border-[#1e1e30]
+        class="w-fullpx-4 py-3 rounded-lg border border-[#1e1e30]
                bg-[#13131f] text-[#c9d1d9] placeholder-[#6e7681] text-sm resize-none
                focus:outline-none focus:border-[#f5a623] transition-colors leading-relaxed"
       />
@@ -315,7 +323,7 @@
          TELA: FASES
     ================================================= -->
     {:else if screen === 'phase'}
-      <p class="text-[#f5a623] text-sm mb-5 w-full max-w-lg">Deseja definir fases de execução?</p>
+      <p class="text-[#f5a623] text-sm mb-5 w-full">Deseja definir fases de execução?</p>
 
       <div class="flex gap-3 mb-6">
         <button
@@ -335,7 +343,7 @@
       </div>
 
       {#if usePhases}
-        <div class="w-full max-w-lg mb-4">
+        <div class="w-fullmb-4">
           {#each phases as phase, i}
             <div class="mb-3 p-3 rounded-lg border border-[#1e1e30] bg-[#13131f]">
               <div class="flex items-center gap-2 mb-2">
@@ -374,11 +382,11 @@
       {#if resultError}
         <div class="text-[#f85149] text-sm mb-4">✗ Erro: {resultError}</div>
       {:else}
-        <div class="text-[#3fb950] text-sm mb-1 w-full max-w-2xl">✓ Prompt gerado com sucesso!</div>
-        <div class="text-[#6e7681] text-xs mb-4 w-full max-w-2xl">{resultPath}</div>
+        <div class="text-[#3fb950] text-sm mb-1 w-full">✓ Prompt gerado com sucesso!</div>
+        <div class="text-[#6e7681] text-xs mb-4 w-full">{resultPath}</div>
       {/if}
 
-      <pre class="w-full max-w-2xl flex-1 min-h-0 overflow-y-auto
+      <pre class="w-full flex-1 min-h-0 overflow-y-auto
                   bg-[#13131f] border border-[#1e1e30] rounded-lg
                   px-4 py-3 text-xs text-[#c9d1d9] leading-relaxed whitespace-pre-wrap"
       >{resultContent}</pre>
@@ -389,6 +397,9 @@
         ← Novo prompt
       </button>
     {/if}
+
+      </div><!-- /coluna direita -->
+    </div><!-- /layout duas colunas -->
 
   </div>
 </div>
