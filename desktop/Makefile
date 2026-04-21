@@ -32,7 +32,8 @@ macos: generate-icns
 	@echo "▶ Building macOS universal..."
 	@mkdir -p $(OUTDIR)
 	$(WAILS) build -clean -platform darwin/universal -o $(APP)
-	@cp -r "build/bin/CASTOR Builder.app" $(OUTDIR)/$(APP)-macos.app
+	@rm -rf "$(OUTDIR)/$(APP)-macos.app"
+	@cp -r "build/bin/CASTOR Builder.app" "$(OUTDIR)/$(APP)-macos.app"
 	@echo "✓ macOS → $(OUTDIR)/$(APP)-macos.app"
 	@if command -v create-dmg >/dev/null 2>&1; then \
 		create-dmg \
