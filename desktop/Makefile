@@ -36,12 +36,13 @@ macos: generate-icns
 	@cp -r "build/bin/CASTOR Builder.app" "$(OUTDIR)/$(APP)-macos.app"
 	@echo "✓ macOS → $(OUTDIR)/$(APP)-macos.app"
 	@if command -v create-dmg >/dev/null 2>&1; then \
+		rm -f "$(OUTDIR)/$(APP)-macos.dmg"; \
 		create-dmg \
 			--volname "CASTOR Builder" \
 			--window-size 540 380 \
 			--icon-size 128 \
-			--icon "$(APP).app" 160 180 \
-			--hide-extension "$(APP).app" \
+			--icon "CASTOR Builder.app" 160 180 \
+			--hide-extension "CASTOR Builder.app" \
 			--app-drop-link 380 180 \
 			"$(OUTDIR)/$(APP)-macos.dmg" \
 			"$(OUTDIR)/$(APP)-macos.app"; \
