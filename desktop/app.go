@@ -60,43 +60,42 @@ func ensureUserDir() bool {
 
 // execDir resolve o diretório base onde ficam models/ e roles/.
 //
-//   - Produção: ~/.castorprompt  (criado por ensureUserDir)
-//   - Desenvolvimento: raiz do projeto (detectada pelo cwd)
+// Prioridade:
+//  1. Raiz do projeto via cwd (dev: desktop/../ tem models/ E roles/)
+//  2. ~/.castorprompt (produção, fallback)
 func execDir() string {
-	// 1. Diretório do usuário (produção)
+	hasBoth := func(dir string) bool {
+		abs, err := filepath.Abs(dir)
+		if err != nil {
+			return false
+		}
+		_, errM := os.Stat(filepath.Join(abs, "models"))
+		_, errR := os.Stat(filepath.Join(abs, "roles"))
+		return errM == nil && errR == nil
+	}
+
+	// 1. Candidatos baseados no cwd — forte sinal de dev
+	if cwd, err := os.Getwd(); err == nil {
+		for _, c := range []string{
+			cwd,
+			filepath.Join(cwd, ".."),
+			filepath.Join(cwd, "../.."),
+		} {
+			if hasBoth(c) {
+				if abs, err := filepath.Abs(c); err == nil {
+					return abs
+				}
+			}
+		}
+	}
+
+	// 2. ~/.castorprompt (produção)
 	if base, err := userDataDir(); err == nil {
-		if _, err := os.Stat(filepath.Join(base, "models")); err == nil {
+		if hasBoth(base) {
 			return base
 		}
 	}
 
-	// 2. Raiz do projeto (desenvolvimento) — busca pelo cwd e seus pais
-	candidates := []string{}
-	if cwd, err := os.Getwd(); err == nil {
-		candidates = append(candidates,
-			cwd,
-			filepath.Join(cwd, ".."),
-			filepath.Join(cwd, "../.."),
-		)
-	}
-	if exe, err := os.Executable(); err == nil {
-		dir := filepath.Dir(exe)
-		candidates = append(candidates,
-			dir,
-			filepath.Join(dir, ".."),
-			filepath.Join(dir, "../.."),
-			filepath.Join(dir, "../../.."),
-		)
-	}
-	for _, c := range candidates {
-		abs, err := filepath.Abs(c)
-		if err != nil {
-			continue
-		}
-		if _, err := os.Stat(filepath.Join(abs, "models")); err == nil {
-			return abs
-		}
-	}
 	return "."
 }
 
