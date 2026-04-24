@@ -961,8 +961,18 @@
         {/each}
       </nav>
 
-      <!-- versão -->
-      <div class="mt-auto text-[10px] text-[#2a2a40]">v0.1.0</div>
+      <!-- tutorial + versão -->
+      <div class="mt-auto flex flex-col items-center gap-3 w-full">
+        <button on:click={() => { tutorialSlide = 0; showTutorial = true }}
+          class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
+                 border border-[#1e1e2e] text-[10px] text-[#3a3a50]
+                 hover:border-[#f5a623]/30 hover:text-[#f5a623] hover:bg-[#f5a623]/5
+                 transition-all group">
+          <span class="text-sm group-hover:scale-110 transition-transform">🗺️</span>
+          Ver tutorial
+        </button>
+        <div class="text-[10px] text-[#2a2a40]">v0.1.0</div>
+      </div>
     </aside>
 
     <!-- ── CONTEÚDO PRINCIPAL ── -->
