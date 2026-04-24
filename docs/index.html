@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CASTOR Builder — Structured prompts for LLMs, no AI required</title>
-  <meta name="description" content="Pick a role. Describe your task. Get a production-ready LLM prompt. 47 roles, 4 models, fully offline." />
+  <title>CASTOR Builder — Prompts estruturados para LLMs, sem IA</title>
+  <meta name="description" content="Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para qualquer LLM. 47 papéis, 4 modelos, totalmente offline." />
   <meta property="og:title" content="CASTOR Builder" />
-  <meta property="og:description" content="Build structured prompts for LLMs — no AI required." />
-  <meta property="og:image" content="https://raw.githubusercontent.com/dilsonrabelo/castor-prompt-builder/main/assets/castor.png" />
+  <meta property="og:description" content="Prompts estruturados para LLMs — sem IA no processo." />
+  <meta property="og:image" content="https://raw.githubusercontent.com/dilsonjlrjr/castor-prompt-builder/master/assets/castor.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -39,28 +39,47 @@
     a { color: var(--primary); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
+    /* ── LANG SWITCHER ── */
+    .lang-switcher {
+      display: flex; align-items: center; gap: .25rem;
+    }
+    .lang-btn {
+      background: transparent; border: 1px solid var(--border2);
+      color: var(--muted); padding: .2rem .55rem;
+      border-radius: 5px; font-size: .75rem; font-weight: 700;
+      cursor: pointer; transition: all .2s; letter-spacing: .03em;
+    }
+    .lang-btn:hover { border-color: var(--muted); color: var(--text); }
+    .lang-btn.active {
+      background: var(--primary); border-color: var(--primary);
+      color: #0a0a12;
+    }
+
     /* ── NAV ── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(10,10,18,0.85);
+      background: rgba(10,10,18,0.88);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       padding: 0 2rem;
       display: flex; align-items: center; justify-content: space-between;
-      height: 56px;
+      height: 56px; gap: 1rem;
     }
     .nav-logo {
       display: flex; align-items: center; gap: .6rem;
       font-weight: 700; font-size: 1rem; color: var(--text);
+      flex-shrink: 0;
     }
     .nav-logo span { color: var(--primary); }
-    .nav-links { display: flex; gap: 1.5rem; }
-    .nav-links a { color: var(--muted); font-size: .875rem; transition: color .2s; }
-    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-center { display: flex; gap: 1.5rem; }
+    .nav-center a { color: var(--muted); font-size: .875rem; transition: color .2s; }
+    .nav-center a:hover { color: var(--text); text-decoration: none; }
+    .nav-right { display: flex; align-items: center; gap: .75rem; }
     .nav-cta {
       background: var(--primary); color: #0a0a12;
       padding: .4rem 1rem; border-radius: 6px;
       font-weight: 700; font-size: .875rem; transition: opacity .2s;
+      flex-shrink: 0;
     }
     .nav-cta:hover { opacity: .85; text-decoration: none; }
 
@@ -71,8 +90,7 @@
       align-items: center; justify-content: center;
       text-align: center;
       padding: 6rem 2rem 4rem;
-      position: relative;
-      overflow: hidden;
+      position: relative; overflow: hidden;
     }
     .hero::before {
       content: '';
@@ -82,10 +100,8 @@
       pointer-events: none;
     }
     .hero-mascot {
-      width: 120px; height: 120px;
-      border-radius: 50%;
-      border: 2px solid var(--border2);
-      object-fit: cover;
+      width: 120px; height: 120px; border-radius: 50%;
+      border: 2px solid var(--border2); object-fit: cover;
       margin-bottom: 1.5rem;
       box-shadow: 0 0 40px rgba(163,113,247,.3);
     }
@@ -104,7 +120,7 @@
     .hero h1 em { font-style: normal; color: var(--primary); }
     .hero-sub {
       font-size: clamp(1rem, 2vw, 1.2rem);
-      color: var(--muted); max-width: 560px; margin: 0 auto 2.5rem;
+      color: var(--muted); max-width: 580px; margin: 0 auto 2.5rem;
     }
     .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
     .btn {
@@ -138,13 +154,16 @@
     .dot-r { background: #ff5f57; }
     .dot-y { background: #febc2e; }
     .dot-g { background: #28c840; }
-    .terminal-body { padding: 1.2rem 1.4rem; font-family: 'SF Mono', 'Fira Code', monospace; font-size: .8rem; text-align: left; }
-    .t-dim { color: var(--muted); }
+    .terminal-body {
+      padding: 1.2rem 1.4rem;
+      font-family: 'SF Mono', 'Fira Code', monospace; font-size: .8rem; text-align: left;
+    }
+    .t-dim    { color: var(--muted); }
     .t-primary { color: var(--primary); }
     .t-purple { color: var(--purple); }
-    .t-green { color: var(--green); }
-    .t-blue { color: var(--blue); }
-    .t-line { padding: .15rem 0; }
+    .t-green  { color: var(--green); }
+    .t-blue   { color: var(--blue); }
+    .t-line   { padding: .15rem 0; }
 
     /* ── SECTIONS ── */
     section { padding: 5rem 2rem; }
@@ -169,7 +188,6 @@
     .step-card {
       background: var(--bg3); border: 1px solid var(--border2);
       border-radius: 12px; padding: 1.5rem;
-      position: relative; overflow: hidden;
       transition: border-color .2s, transform .2s;
     }
     .step-card:hover { border-color: var(--purple); transform: translateY(-2px); }
@@ -189,23 +207,22 @@
     }
     .model-card {
       border-radius: 12px; padding: 1.5rem;
-      border: 1px solid transparent;
-      transition: transform .2s;
+      border: 1px solid transparent; transition: transform .2s;
     }
     .model-card:hover { transform: translateY(-2px); }
-    .model-rtf   { background: rgba(88,166,255,.07); border-color: rgba(88,166,255,.25); }
-    .model-race  { background: rgba(245,166,35,.07); border-color: rgba(245,166,35,.25); }
-    .model-risen { background: rgba(163,113,247,.07); border-color: rgba(163,113,247,.25); }
-    .model-create { background: rgba(63,185,80,.07); border-color: rgba(63,185,80,.25); }
+    .model-rtf    { background: rgba(88,166,255,.07);  border-color: rgba(88,166,255,.25); }
+    .model-race   { background: rgba(245,166,35,.07);  border-color: rgba(245,166,35,.25); }
+    .model-risen  { background: rgba(163,113,247,.07); border-color: rgba(163,113,247,.25); }
+    .model-create { background: rgba(63,185,80,.07);   border-color: rgba(63,185,80,.25); }
     .model-badge {
       display: inline-block; padding: .2rem .6rem;
       border-radius: 100px; font-size: .65rem; font-weight: 800;
       letter-spacing: .08em; text-transform: uppercase; margin-bottom: .75rem;
     }
-    .badge-blue   { background: rgba(88,166,255,.2); color: var(--blue); }
-    .badge-orange { background: rgba(245,166,35,.2); color: var(--primary); }
+    .badge-blue   { background: rgba(88,166,255,.2);  color: var(--blue); }
+    .badge-orange { background: rgba(245,166,35,.2);  color: var(--primary); }
     .badge-purple { background: rgba(163,113,247,.2); color: var(--purple); }
-    .badge-green  { background: rgba(63,185,80,.2); color: var(--green); }
+    .badge-green  { background: rgba(63,185,80,.2);   color: var(--green); }
     .model-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
     .model-card .model-sub { color: var(--muted); font-size: .8rem; margin-bottom: .75rem; }
     .model-card p { font-size: .875rem; color: var(--muted); }
@@ -218,8 +235,7 @@
     }
     .feature-card {
       background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 12px; padding: 1.4rem;
-      transition: border-color .2s;
+      border-radius: 12px; padding: 1.4rem; transition: border-color .2s;
     }
     .feature-card:hover { border-color: var(--border2); }
     .feature-icon { font-size: 1.6rem; margin-bottom: .75rem; }
@@ -238,7 +254,6 @@
       font-size: .8rem; color: var(--muted);
       display: flex; align-items: center; gap: .5rem;
     }
-    .role-chip .emoji { font-size: 1rem; }
 
     /* ── DOWNLOAD ── */
     .download-section {
@@ -281,9 +296,12 @@
     footer a { color: var(--muted); }
     footer a:hover { color: var(--text); }
 
+    /* ── TRANSITIONS ── */
+    [data-i18n] { transition: opacity .15s; }
+
     @media (max-width: 640px) {
       nav { padding: 0 1rem; }
-      .nav-links { display: none; }
+      .nav-center { display: none; }
       .hero { padding: 5rem 1rem 3rem; }
       section { padding: 3rem 1rem; }
       .download-section { padding: 1.5rem; }
@@ -295,31 +313,37 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo">🦫 <span>CASTOR</span>&nbsp;Builder</div>
-  <div class="nav-links">
-    <a href="#how">How it works</a>
-    <a href="#models">Models</a>
-    <a href="#roles">Roles</a>
-    <a href="#download">Download</a>
-    <a href="https://github.com/dilsonrabelo/castor-prompt-builder">GitHub</a>
+  <div class="nav-center">
+    <a href="#how"      data-i18n="nav.how">Como funciona</a>
+    <a href="#models"   data-i18n="nav.models">Modelos</a>
+    <a href="#roles"    data-i18n="nav.roles">Papéis</a>
+    <a href="#download" data-i18n="nav.download">Download</a>
+    <a href="https://github.com/dilsonjlrjr/castor-prompt-builder">GitHub</a>
   </div>
-  <a href="#download" class="btn nav-cta">Download</a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('pt')" id="btn-pt">PT</button>
+      <button class="lang-btn"        onclick="setLang('en')" id="btn-en">EN</button>
+    </div>
+    <a href="#download" class="btn nav-cta" data-i18n="nav.cta">Download</a>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <img src="https://raw.githubusercontent.com/dilsonrabelo/castor-prompt-builder/main/assets/castor.png"
+  <img src="https://raw.githubusercontent.com/dilsonjlrjr/castor-prompt-builder/master/assets/castor.png"
        alt="Castor mascot" class="hero-mascot"
        onerror="this.style.display='none'" />
-  <div class="hero-badge">🦫 No AI in the loop</div>
-  <h1>Build structured prompts<br/>for <em>any LLM</em></h1>
-  <p class="hero-sub">
-    Pick a role. Describe your task. Get a production-ready prompt.<br/>
-    47 roles, 4 proven models, fully offline.
+  <div class="hero-badge">🦫 <span data-i18n="hero.badge">Sem IA no processo</span></div>
+  <h1 data-i18n="hero.h1">Crie prompts estruturados<br/>para <em>qualquer LLM</em></h1>
+  <p class="hero-sub" data-i18n="hero.sub">
+    Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para produção.<br/>
+    47 papéis, 4 modelos comprovados, totalmente offline.
   </p>
   <div class="hero-buttons">
-    <a href="#download" class="btn btn-primary">⬇ Download</a>
-    <a href="https://github.com/dilsonrabelo/castor-prompt-builder" class="btn btn-secondary">
-      View on GitHub
+    <a href="#download" class="btn btn-primary">⬇ <span data-i18n="nav.cta">Download</span></a>
+    <a href="https://github.com/dilsonjlrjr/castor-prompt-builder" class="btn btn-secondary">
+      <span data-i18n="hero.github">Ver no GitHub</span>
     </a>
   </div>
 
@@ -333,12 +357,12 @@
     <div class="terminal-body">
       <div class="t-line"><span class="t-primary">🦫 CASTOR BUILDER</span></div>
       <div class="t-line t-dim">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-      <div class="t-line" style="margin-top:.5rem"><span class="t-dim">Select model</span></div>
+      <div class="t-line" style="margin-top:.5rem"><span class="t-dim" data-i18n="terminal.selectModel">Selecionar modelo</span></div>
       <div class="t-line"><span class="t-purple">▶ RACE</span><span class="t-dim">  Role, Action, Context, Expectation</span></div>
       <div class="t-line t-dim">&nbsp; RTF</div>
       <div class="t-line t-dim">&nbsp; RISEN</div>
       <div class="t-line t-dim">&nbsp; CREATE</div>
-      <div class="t-line" style="margin-top:.5rem t-dim"><span class="t-dim">↑↓ navigate &nbsp; Enter select &nbsp; i info &nbsp; q quit</span></div>
+      <div class="t-line" style="margin-top:.5rem"><span class="t-dim" data-i18n="terminal.hint">↑↓ navegar &nbsp; Enter selecionar &nbsp; i info &nbsp; q sair</span></div>
     </div>
   </div>
 </section>
@@ -348,46 +372,46 @@
 <!-- HOW IT WORKS -->
 <section id="how">
   <div class="container">
-    <div class="section-label">How it works</div>
-    <h2 class="section-title">Six steps to a structured prompt</h2>
-    <p class="section-sub">No configuration. No API keys. Just a wizard that extracts what matters and fills the gaps.</p>
+    <div class="section-label" data-i18n="how.label">Como funciona</div>
+    <h2 class="section-title" data-i18n="how.title">Seis passos para um prompt estruturado</h2>
+    <p class="section-sub" data-i18n="how.sub">Sem configuração. Sem chaves de API. Um wizard que extrai o que importa e preenche as lacunas.</p>
 
     <div class="steps-grid">
       <div class="step-card">
-        <div class="step-number">Step 1</div>
+        <div class="step-number" data-i18n="step">Passo</div>
         <div class="step-icon">📐</div>
-        <h3>Select a model</h3>
-        <p>Choose a prompt structure (RTF, RACE, RISEN or CREATE) based on the complexity of your task.</p>
+        <h3 data-i18n="how.s1.title">Selecione o modelo</h3>
+        <p data-i18n="how.s1.desc">Escolha uma estrutura de prompt (RTF, RACE, RISEN ou CREATE) com base na complexidade da tarefa.</p>
       </div>
       <div class="step-card">
-        <div class="step-number">Step 2</div>
+        <div class="step-number" data-i18n="step2">Passo 2</div>
         <div class="step-icon">🎭</div>
-        <h3>Pick role(s)</h3>
-        <p>Search 47 professional roles. Select multiple — their skills and tone merge automatically.</p>
+        <h3 data-i18n="how.s2.title">Escolha o(s) papel(is)</h3>
+        <p data-i18n="how.s2.desc">Busque entre 47 papéis profissionais. Selecione vários — habilidades e tom se mesclam automaticamente.</p>
       </div>
       <div class="step-card">
-        <div class="step-number">Step 3</div>
+        <div class="step-number" data-i18n="step3">Passo 3</div>
         <div class="step-icon">✍️</div>
-        <h3>Write your narrative</h3>
-        <p>Describe your task in plain language. No special syntax. The engine maps it to the template fields.</p>
+        <h3 data-i18n="how.s3.title">Escreva a narrativa</h3>
+        <p data-i18n="how.s3.desc">Descreva a tarefa em linguagem livre. Sem sintaxe especial. O motor mapeia para os campos do template.</p>
       </div>
       <div class="step-card">
-        <div class="step-number">Step 4</div>
+        <div class="step-number" data-i18n="step4">Passo 4</div>
         <div class="step-icon">🔍</div>
-        <h3>Fill the gaps</h3>
-        <p>Fields the engine couldn't auto-fill become interactive questions. Required ones are flagged.</p>
+        <h3 data-i18n="how.s4.title">Preencha as lacunas</h3>
+        <p data-i18n="how.s4.desc">Campos não preenchidos automaticamente viram perguntas interativas. Os obrigatórios são sinalizados.</p>
       </div>
       <div class="step-card">
-        <div class="step-number">Step 5</div>
+        <div class="step-number" data-i18n="step5">Passo 5</div>
         <div class="step-icon">🗂️</div>
-        <h3>Define phases (optional)</h3>
-        <p>Structure the execution into numbered phases. Each gets a title and description injected into the prompt.</p>
+        <h3 data-i18n="how.s5.title">Defina fases (opcional)</h3>
+        <p data-i18n="how.s5.desc">Estruture a execução em fases numeradas. Cada uma recebe título e descrição injetados no prompt.</p>
       </div>
       <div class="step-card">
-        <div class="step-number">Step 6</div>
+        <div class="step-number" data-i18n="step6">Passo 6</div>
         <div class="step-icon">✅</div>
-        <h3>Prompt saved</h3>
-        <p>Your structured <code>.md</code> prompt is saved to <code>prompts/</code>, ready to paste into any LLM.</p>
+        <h3 data-i18n="how.s6.title">Prompt salvo</h3>
+        <p data-i18n="how.s6.desc">Seu prompt estruturado em <code>.md</code> é salvo em <code>prompts/</code>, pronto para colar em qualquer LLM.</p>
       </div>
     </div>
   </div>
@@ -398,34 +422,34 @@
 <!-- MODELS -->
 <section id="models">
   <div class="container">
-    <div class="section-label">Prompt models</div>
-    <h2 class="section-title">Four structures. One right fit.</h2>
-    <p class="section-sub">Each model is a proven framework for structuring LLM instructions. Pick the one that matches your task's complexity.</p>
+    <div class="section-label" data-i18n="models.label">Modelos de prompt</div>
+    <h2 class="section-title" data-i18n="models.title">Quatro estruturas. Um encaixe perfeito.</h2>
+    <p class="section-sub" data-i18n="models.sub">Cada modelo é um framework comprovado para estruturar instruções a LLMs. Escolha o que melhor se adapta à complexidade da sua tarefa.</p>
 
     <div class="models-grid">
       <div class="model-card model-rtf">
         <div class="model-badge badge-blue">RTF</div>
         <h3>Role · Task · Feature</h3>
-        <div class="model-sub">Simple & direct</div>
-        <p>Best for focused, single-output tasks where you know exactly what you want.</p>
+        <div class="model-sub" data-i18n="models.rtf.sub">Simples e direto</div>
+        <p data-i18n="models.rtf.desc">Ideal para tarefas focadas com saída única, quando você sabe exatamente o que quer.</p>
       </div>
       <div class="model-card model-race">
         <div class="model-badge badge-orange">RACE</div>
         <h3>Role · Action · Context · Expectation</h3>
-        <div class="model-sub">Rich context</div>
-        <p>Best for complex briefs where background and deliverable clarity matter most.</p>
+        <div class="model-sub" data-i18n="models.race.sub">Contexto rico</div>
+        <p data-i18n="models.race.desc">Ideal para briefs complexos onde contexto e clareza do entregável são essenciais.</p>
       </div>
       <div class="model-card model-risen">
         <div class="model-badge badge-purple">RISEN</div>
         <h3>Role · Input · Steps · Expectation · Narrowing</h3>
-        <div class="model-sub">Step-by-step reasoning</div>
-        <p>Best for long tasks with explicit constraints and multi-stage reasoning requirements.</p>
+        <div class="model-sub" data-i18n="models.risen.sub">Raciocínio passo a passo</div>
+        <p data-i18n="models.risen.desc">Ideal para tarefas longas com restrições explícitas e raciocínio multi-etapas.</p>
       </div>
       <div class="model-card model-create">
         <div class="model-badge badge-green">CREATE</div>
         <h3>Context · Role · Examples · Audience · Tone · Expectation</h3>
-        <div class="model-sub">Creative output</div>
-        <p>Best for content creation with audience definition and tone control.</p>
+        <div class="model-sub" data-i18n="models.create.sub">Saída criativa</div>
+        <p data-i18n="models.create.desc">Ideal para criação de conteúdo com definição de público e controle de tom.</p>
       </div>
     </div>
   </div>
@@ -436,50 +460,50 @@
 <!-- FEATURES -->
 <section>
   <div class="container">
-    <div class="section-label">Features</div>
-    <h2 class="section-title">Everything you need. Nothing you don't.</h2>
-    <p class="section-sub">CASTOR is a focused tool. It does one thing exceptionally well.</p>
+    <div class="section-label" data-i18n="features.label">Funcionalidades</div>
+    <h2 class="section-title" data-i18n="features.title">Tudo que você precisa. Nada que não precisa.</h2>
+    <p class="section-sub" data-i18n="features.sub">CASTOR é uma ferramenta focada. Faz uma coisa excepcionalmente bem.</p>
 
     <div class="features-grid">
       <div class="feature-card">
         <div class="feature-icon">🔌</div>
-        <h3>Zero AI</h3>
-        <p>Pure Go template engine. No API keys, no network calls, no costs, no rate limits.</p>
+        <h3 data-i18n="f1.title">Zero IA</h3>
+        <p data-i18n="f1.desc">Motor de templates em Go puro. Sem chaves de API, sem chamadas de rede, sem custos ou limites.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🎭</div>
-        <h3>47 Roles</h3>
-        <p>Professional archetypes across 12 categories. Each carries skills, tone, and context questions.</p>
+        <h3 data-i18n="f2.title">47 Papéis</h3>
+        <p data-i18n="f2.desc">Arquétipos profissionais em 12 categorias. Cada um traz habilidades, tom e perguntas de contexto.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🤝</div>
-        <h3>Multi-role</h3>
-        <p>Combine multiple roles. Their habilidades and tone instructions merge into one cohesive prompt.</p>
+        <h3 data-i18n="f3.title">Multi-papel</h3>
+        <p data-i18n="f3.desc">Combine múltiplos papéis. Habilidades e tom se fundem automaticamente em um prompt coeso.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🗂️</div>
-        <h3>Execution phases</h3>
-        <p>Structure complex tasks into numbered phases, each with a title and detailed description.</p>
+        <h3 data-i18n="f4.title">Fases de execução</h3>
+        <p data-i18n="f4.desc">Estruture tarefas complexas em fases numeradas, cada uma com título e descrição detalhada.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🔍</div>
-        <h3>Gap detection</h3>
-        <p>Required fields not covered by the narrative automatically become interactive questions.</p>
+        <h3 data-i18n="f5.title">Detecção de lacunas</h3>
+        <p data-i18n="f5.desc">Campos obrigatórios não cobertos pela narrativa viram perguntas interativas automaticamente.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🖥️</div>
-        <h3>Desktop + TUI</h3>
-        <p>Native desktop app (Wails v2) or terminal wizard (bubbletea). Same logic, your preference.</p>
+        <h3 data-i18n="f6.title">Desktop + TUI</h3>
+        <p data-i18n="f6.desc">App nativo (Wails v2) ou wizard no terminal (bubbletea). Mesma lógica, sua preferência.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">📦</div>
-        <h3>Extensible</h3>
-        <p>Add custom roles and models as plain Markdown files. No code changes needed.</p>
+        <h3 data-i18n="f7.title">Extensível</h3>
+        <p data-i18n="f7.desc">Adicione papéis e modelos customizados como arquivos Markdown. Sem mudanças no código.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🌍</div>
-        <h3>Cross-platform</h3>
-        <p>macOS universal binary, Windows amd64, Linux. Bundled roles extracted on first launch.</p>
+        <h3 data-i18n="f8.title">Multi-plataforma</h3>
+        <p data-i18n="f8.desc">Binário universal para macOS, Windows amd64 e Linux. Papéis embutidos extraídos no primeiro uso.</p>
       </div>
     </div>
   </div>
@@ -490,60 +514,60 @@
 <!-- ROLES -->
 <section id="roles">
   <div class="container">
-    <div class="section-label">Role library</div>
-    <h2 class="section-title">47 roles across 12 categories</h2>
-    <p class="section-sub">Each role carries a professional description, skill set, communication tone, and context-filling questions.</p>
+    <div class="section-label" data-i18n="roles.label">Biblioteca de papéis</div>
+    <h2 class="section-title" data-i18n="roles.title">47 papéis em 12 categorias</h2>
+    <p class="section-sub" data-i18n="roles.sub">Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto.</p>
 
     <div class="roles-grid">
-      <div class="role-chip"><span class="emoji">🏛️</span> Software Architect</div>
-      <div class="role-chip"><span class="emoji">🏛️</span> Solutions Architect</div>
-      <div class="role-chip"><span class="emoji">🏛️</span> Cloud Architect</div>
-      <div class="role-chip"><span class="emoji">🏛️</span> Microservices Architect</div>
-      <div class="role-chip"><span class="emoji">⚙️</span> Go Engineer</div>
-      <div class="role-chip"><span class="emoji">⚙️</span> Node.js Engineer</div>
-      <div class="role-chip"><span class="emoji">⚙️</span> Python Engineer</div>
-      <div class="role-chip"><span class="emoji">⚙️</span> Java Engineer</div>
-      <div class="role-chip"><span class="emoji">🎨</span> React Developer</div>
-      <div class="role-chip"><span class="emoji">🎨</span> Vue Developer</div>
-      <div class="role-chip"><span class="emoji">📱</span> React Native Dev</div>
-      <div class="role-chip"><span class="emoji">📱</span> Flutter Developer</div>
-      <div class="role-chip"><span class="emoji">🚀</span> SRE Engineer</div>
-      <div class="role-chip"><span class="emoji">🚀</span> Platform Engineer</div>
-      <div class="role-chip"><span class="emoji">🚀</span> Cloud AWS Engineer</div>
-      <div class="role-chip"><span class="emoji">🗄️</span> SQL DBA</div>
-      <div class="role-chip"><span class="emoji">🗄️</span> NoSQL DBA</div>
-      <div class="role-chip"><span class="emoji">📊</span> Data Architect</div>
-      <div class="role-chip"><span class="emoji">📊</span> Data Engineer</div>
-      <div class="role-chip"><span class="emoji">📊</span> Data Scientist</div>
-      <div class="role-chip"><span class="emoji">📊</span> ML Engineer</div>
-      <div class="role-chip"><span class="emoji">📊</span> BI Analyst</div>
-      <div class="role-chip"><span class="emoji">📊</span> Analytics Engineer</div>
-      <div class="role-chip"><span class="emoji">✏️</span> UX Designer</div>
-      <div class="role-chip"><span class="emoji">✏️</span> Product Designer</div>
-      <div class="role-chip"><span class="emoji">📋</span> Scrum Master</div>
-      <div class="role-chip"><span class="emoji">📋</span> Product Owner</div>
-      <div class="role-chip"><span class="emoji">📋</span> Tech Lead</div>
-      <div class="role-chip"><span class="emoji">📋</span> Product Manager</div>
-      <div class="role-chip"><span class="emoji">📋</span> Business Analyst</div>
-      <div class="role-chip"><span class="emoji">🔒</span> Security Engineer</div>
-      <div class="role-chip"><span class="emoji">🔒</span> Pentester</div>
-      <div class="role-chip"><span class="emoji">🔒</span> Compliance Analyst</div>
-      <div class="role-chip"><span class="emoji">🧪</span> QA Engineer</div>
-      <div class="role-chip"><span class="emoji">🧪</span> QA Automation</div>
-      <div class="role-chip"><span class="emoji">🧪</span> QA Lead</div>
-      <div class="role-chip"><span class="emoji">📣</span> Content Specialist</div>
-      <div class="role-chip"><span class="emoji">📣</span> Copywriter</div>
-      <div class="role-chip"><span class="emoji">📣</span> SEO Specialist</div>
-      <div class="role-chip"><span class="emoji">📣</span> Growth Analyst</div>
-      <div class="role-chip"><span class="emoji">📝</span> Technical Writer</div>
-      <div class="role-chip"><span class="emoji">🏅</span> Go Specialist</div>
-      <div class="role-chip"><span class="emoji">🏅</span> Java Specialist</div>
-      <div class="role-chip"><span class="emoji">🏅</span> .NET Specialist</div>
-      <div class="role-chip"><span class="emoji">🏅</span> Python Specialist</div>
+      <div class="role-chip"><span>🏛️</span> Arquiteto de Software</div>
+      <div class="role-chip"><span>🏛️</span> Arquiteto de Soluções</div>
+      <div class="role-chip"><span>🏛️</span> Arquiteto Cloud</div>
+      <div class="role-chip"><span>🏛️</span> Arquiteto Microsserviços</div>
+      <div class="role-chip"><span>⚙️</span> Engenheiro Go</div>
+      <div class="role-chip"><span>⚙️</span> Engenheiro Node.js</div>
+      <div class="role-chip"><span>⚙️</span> Engenheiro Python</div>
+      <div class="role-chip"><span>⚙️</span> Engenheiro Java</div>
+      <div class="role-chip"><span>🎨</span> Dev Frontend React</div>
+      <div class="role-chip"><span>🎨</span> Dev Frontend Vue</div>
+      <div class="role-chip"><span>📱</span> Dev Mobile React Native</div>
+      <div class="role-chip"><span>📱</span> Dev Mobile Flutter</div>
+      <div class="role-chip"><span>🚀</span> Engenheiro SRE</div>
+      <div class="role-chip"><span>🚀</span> Engenheiro de Plataforma</div>
+      <div class="role-chip"><span>🚀</span> Engenheiro Cloud AWS</div>
+      <div class="role-chip"><span>🗄️</span> DBA SQL</div>
+      <div class="role-chip"><span>🗄️</span> DBA NoSQL</div>
+      <div class="role-chip"><span>📊</span> Arquiteto de Dados</div>
+      <div class="role-chip"><span>📊</span> Engenheiro de Dados</div>
+      <div class="role-chip"><span>📊</span> Cientista de Dados</div>
+      <div class="role-chip"><span>📊</span> Engenheiro ML</div>
+      <div class="role-chip"><span>📊</span> Analista BI</div>
+      <div class="role-chip"><span>📊</span> Analytics Engineer</div>
+      <div class="role-chip"><span>✏️</span> UX Designer</div>
+      <div class="role-chip"><span>✏️</span> Product Designer</div>
+      <div class="role-chip"><span>📋</span> Scrum Master</div>
+      <div class="role-chip"><span>📋</span> Product Owner</div>
+      <div class="role-chip"><span>📋</span> Tech Lead</div>
+      <div class="role-chip"><span>📋</span> Product Manager</div>
+      <div class="role-chip"><span>📋</span> Business Analyst</div>
+      <div class="role-chip"><span>🔒</span> Engenheiro de Segurança</div>
+      <div class="role-chip"><span>🔒</span> Pentester</div>
+      <div class="role-chip"><span>🔒</span> Analista de Compliance</div>
+      <div class="role-chip"><span>🧪</span> QA Engineer</div>
+      <div class="role-chip"><span>🧪</span> QA Automation</div>
+      <div class="role-chip"><span>🧪</span> QA Lead</div>
+      <div class="role-chip"><span>📣</span> Especialista de Conteúdo</div>
+      <div class="role-chip"><span>📣</span> Copywriter</div>
+      <div class="role-chip"><span>📣</span> Especialista SEO</div>
+      <div class="role-chip"><span>📣</span> Analista de Growth</div>
+      <div class="role-chip"><span>📝</span> Technical Writer</div>
+      <div class="role-chip"><span>🏅</span> Especialista Go</div>
+      <div class="role-chip"><span>🏅</span> Especialista Java</div>
+      <div class="role-chip"><span>🏅</span> Especialista .NET</div>
+      <div class="role-chip"><span>🏅</span> Especialista Python</div>
     </div>
 
-    <p style="margin-top:1.5rem; color:var(--muted); font-size:.875rem;">
-      Add your own roles by dropping <code>.md</code> files in <code>~/.castorprompt/roles/</code>.
+    <p style="margin-top:1.5rem; color:var(--muted); font-size:.875rem;" data-i18n="roles.custom">
+      Adicione seus próprios papéis colocando arquivos <code>.md</code> em <code>~/.castorprompt/roles/</code>.
     </p>
   </div>
 </section>
@@ -554,22 +578,22 @@
 <section id="download">
   <div class="container">
     <div class="download-section">
-      <div class="section-label" style="margin-bottom:.5rem">Download</div>
-      <h2 class="section-title">Get CASTOR Builder</h2>
-      <p style="color:var(--muted)">Native binaries for every platform. No runtime dependencies.</p>
+      <div class="section-label" style="margin-bottom:.5rem" data-i18n="dl.label">Download</div>
+      <h2 class="section-title" data-i18n="dl.title">Baixe o CASTOR Builder</h2>
+      <p style="color:var(--muted)" data-i18n="dl.sub">Binários nativos para cada plataforma. Sem dependências de runtime.</p>
 
       <div class="download-grid">
-        <a href="https://github.com/dilsonrabelo/castor-prompt-builder/releases/latest" class="dl-card">
+        <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
           <div class="os-icon"></div>
           <div class="os-name">macOS</div>
           <div class="os-arch">Universal (Apple Silicon + Intel)</div>
         </a>
-        <a href="https://github.com/dilsonrabelo/castor-prompt-builder/releases/latest" class="dl-card">
+        <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
           <div class="os-icon">🪟</div>
           <div class="os-name">Windows</div>
           <div class="os-arch">amd64</div>
         </a>
-        <a href="https://github.com/dilsonrabelo/castor-prompt-builder/releases/latest" class="dl-card">
+        <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
           <div class="os-icon">🐧</div>
           <div class="os-name">Linux</div>
           <div class="os-arch">amd64</div>
@@ -577,7 +601,7 @@
       </div>
 
       <div style="margin-top:2rem">
-        <p style="color:var(--muted); font-size:.875rem; margin-bottom:1rem">Or build from source:</p>
+        <p style="color:var(--muted); font-size:.875rem; margin-bottom:1rem" data-i18n="dl.source">Ou compile a partir do código-fonte:</p>
         <div class="code-block" style="max-width:500px; margin:0 auto; text-align:left">
           <div><span class="comment"># TUI</span></div>
           <div><span class="cmd">go build</span> <span class="flag">-o</span> castor-tui ./cmd/tui</div>
@@ -592,13 +616,174 @@
 <!-- FOOTER -->
 <footer>
   <p>
-    Made with 🦫 and Go &nbsp;·&nbsp;
-    <a href="https://github.com/dilsonrabelo/castor-prompt-builder">GitHub</a>
+    <span data-i18n="footer.made">Feito com</span> 🦫 e Go &nbsp;·&nbsp;
+    <a href="https://github.com/dilsonjlrjr/castor-prompt-builder">GitHub</a>
     &nbsp;·&nbsp;
-    <a href="https://github.com/dilsonrabelo/castor-prompt-builder/blob/main/LICENSE">MIT License</a>
+    <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/blob/master/LICENSE">MIT License</a>
   </p>
-  <p style="margin-top:.5rem; font-size:.75rem; opacity:.5">CASTOR Builder — Prompt engineering without the AI</p>
+  <p style="margin-top:.5rem; font-size:.75rem; opacity:.5">CASTOR Builder — <span data-i18n="footer.tagline">Engenharia de prompts sem IA</span></p>
 </footer>
+
+<script>
+const I18N = {
+  pt: {
+    'nav.how':       'Como funciona',
+    'nav.models':    'Modelos',
+    'nav.roles':     'Papéis',
+    'nav.download':  'Download',
+    'nav.cta':       'Download',
+    'hero.badge':    'Sem IA no processo',
+    'hero.h1':       'Crie prompts estruturados<br/>para <em>qualquer LLM</em>',
+    'hero.sub':      'Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para produção.<br/>47 papéis, 4 modelos comprovados, totalmente offline.',
+    'hero.github':   'Ver no GitHub',
+    'terminal.selectModel': 'Selecionar modelo',
+    'terminal.hint': '↑↓ navegar &nbsp; Enter selecionar &nbsp; i info &nbsp; q sair',
+    'how.label':     'Como funciona',
+    'how.title':     'Seis passos para um prompt estruturado',
+    'how.sub':       'Sem configuração. Sem chaves de API. Um wizard que extrai o que importa e preenche as lacunas.',
+    'step':   'Passo 1', 'step2': 'Passo 2', 'step3': 'Passo 3',
+    'step4':  'Passo 4', 'step5': 'Passo 5', 'step6': 'Passo 6',
+    'how.s1.title':  'Selecione o modelo',
+    'how.s1.desc':   'Escolha uma estrutura de prompt (RTF, RACE, RISEN ou CREATE) com base na complexidade da tarefa.',
+    'how.s2.title':  'Escolha o(s) papel(is)',
+    'how.s2.desc':   'Busque entre 47 papéis profissionais. Selecione vários — habilidades e tom se mesclam automaticamente.',
+    'how.s3.title':  'Escreva a narrativa',
+    'how.s3.desc':   'Descreva a tarefa em linguagem livre. Sem sintaxe especial. O motor mapeia para os campos do template.',
+    'how.s4.title':  'Preencha as lacunas',
+    'how.s4.desc':   'Campos não preenchidos automaticamente viram perguntas interativas. Os obrigatórios são sinalizados.',
+    'how.s5.title':  'Defina fases (opcional)',
+    'how.s5.desc':   'Estruture a execução em fases numeradas. Cada uma recebe título e descrição injetados no prompt.',
+    'how.s6.title':  'Prompt salvo',
+    'how.s6.desc':   'Seu prompt estruturado em <code>.md</code> é salvo em <code>prompts/</code>, pronto para colar em qualquer LLM.',
+    'models.label':  'Modelos de prompt',
+    'models.title':  'Quatro estruturas. Um encaixe perfeito.',
+    'models.sub':    'Cada modelo é um framework comprovado para estruturar instruções a LLMs. Escolha o que melhor se adapta à complexidade da sua tarefa.',
+    'models.rtf.sub':    'Simples e direto',
+    'models.rtf.desc':   'Ideal para tarefas focadas com saída única, quando você sabe exatamente o que quer.',
+    'models.race.sub':   'Contexto rico',
+    'models.race.desc':  'Ideal para briefs complexos onde contexto e clareza do entregável são essenciais.',
+    'models.risen.sub':  'Raciocínio passo a passo',
+    'models.risen.desc': 'Ideal para tarefas longas com restrições explícitas e raciocínio multi-etapas.',
+    'models.create.sub':  'Saída criativa',
+    'models.create.desc': 'Ideal para criação de conteúdo com definição de público e controle de tom.',
+    'features.label': 'Funcionalidades',
+    'features.title': 'Tudo que você precisa. Nada que não precisa.',
+    'features.sub':   'CASTOR é uma ferramenta focada. Faz uma coisa excepcionalmente bem.',
+    'f1.title': 'Zero IA',           'f1.desc': 'Motor de templates em Go puro. Sem chaves de API, sem chamadas de rede, sem custos ou limites.',
+    'f2.title': '47 Papéis',         'f2.desc': 'Arquétipos profissionais em 12 categorias. Cada um traz habilidades, tom e perguntas de contexto.',
+    'f3.title': 'Multi-papel',        'f3.desc': 'Combine múltiplos papéis. Habilidades e tom se fundem automaticamente em um prompt coeso.',
+    'f4.title': 'Fases de execução', 'f4.desc': 'Estruture tarefas complexas em fases numeradas, cada uma com título e descrição detalhada.',
+    'f5.title': 'Detecção de lacunas','f5.desc': 'Campos obrigatórios não cobertos pela narrativa viram perguntas interativas automaticamente.',
+    'f6.title': 'Desktop + TUI',     'f6.desc': 'App nativo (Wails v2) ou wizard no terminal (bubbletea). Mesma lógica, sua preferência.',
+    'f7.title': 'Extensível',        'f7.desc': 'Adicione papéis e modelos customizados como arquivos Markdown. Sem mudanças no código.',
+    'f8.title': 'Multi-plataforma',  'f8.desc': 'Binário universal para macOS, Windows amd64 e Linux. Papéis embutidos extraídos no primeiro uso.',
+    'roles.label': 'Biblioteca de papéis',
+    'roles.title': '47 papéis em 12 categorias',
+    'roles.sub':   'Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto.',
+    'roles.custom':'Adicione seus próprios papéis colocando arquivos <code>.md</code> em <code>~/.castorprompt/roles/</code>.',
+    'dl.label':  'Download',
+    'dl.title':  'Baixe o CASTOR Builder',
+    'dl.sub':    'Binários nativos para cada plataforma. Sem dependências de runtime.',
+    'dl.source': 'Ou compile a partir do código-fonte:',
+    'footer.made':    'Feito com',
+    'footer.tagline': 'Engenharia de prompts sem IA',
+  },
+  en: {
+    'nav.how':       'How it works',
+    'nav.models':    'Models',
+    'nav.roles':     'Roles',
+    'nav.download':  'Download',
+    'nav.cta':       'Download',
+    'hero.badge':    'No AI in the loop',
+    'hero.h1':       'Build structured prompts<br/>for <em>any LLM</em>',
+    'hero.sub':      'Pick a role. Describe your task. Get a production-ready prompt.<br/>47 roles, 4 proven models, fully offline.',
+    'hero.github':   'View on GitHub',
+    'terminal.selectModel': 'Select model',
+    'terminal.hint': '↑↓ navigate &nbsp; Enter select &nbsp; i info &nbsp; q quit',
+    'how.label':     'How it works',
+    'how.title':     'Six steps to a structured prompt',
+    'how.sub':       'No configuration. No API keys. A wizard that extracts what matters and fills the gaps.',
+    'step':  'Step 1', 'step2': 'Step 2', 'step3': 'Step 3',
+    'step4': 'Step 4', 'step5': 'Step 5', 'step6': 'Step 6',
+    'how.s1.title':  'Select a model',
+    'how.s1.desc':   'Choose a prompt structure (RTF, RACE, RISEN or CREATE) based on the complexity of your task.',
+    'how.s2.title':  'Pick role(s)',
+    'how.s2.desc':   'Search 47 professional roles. Select multiple — their skills and tone merge automatically.',
+    'how.s3.title':  'Write your narrative',
+    'how.s3.desc':   'Describe your task in plain language. No special syntax. The engine maps it to the template fields.',
+    'how.s4.title':  'Fill the gaps',
+    'how.s4.desc':   'Fields the engine couldn\'t auto-fill become interactive questions. Required ones are flagged.',
+    'how.s5.title':  'Define phases (optional)',
+    'how.s5.desc':   'Structure the execution into numbered phases. Each gets a title and description injected into the prompt.',
+    'how.s6.title':  'Prompt saved',
+    'how.s6.desc':   'Your structured <code>.md</code> prompt is saved to <code>prompts/</code>, ready to paste into any LLM.',
+    'models.label':  'Prompt models',
+    'models.title':  'Four structures. One right fit.',
+    'models.sub':    'Each model is a proven framework for structuring LLM instructions. Pick the one that matches your task\'s complexity.',
+    'models.rtf.sub':    'Simple & direct',
+    'models.rtf.desc':   'Best for focused, single-output tasks where you know exactly what you want.',
+    'models.race.sub':   'Rich context',
+    'models.race.desc':  'Best for complex briefs where background and deliverable clarity matter most.',
+    'models.risen.sub':  'Step-by-step reasoning',
+    'models.risen.desc': 'Best for long tasks with explicit constraints and multi-stage reasoning requirements.',
+    'models.create.sub':  'Creative output',
+    'models.create.desc': 'Best for content creation with audience definition and tone control.',
+    'features.label': 'Features',
+    'features.title': 'Everything you need. Nothing you don\'t.',
+    'features.sub':   'CASTOR is a focused tool. It does one thing exceptionally well.',
+    'f1.title': 'Zero AI',          'f1.desc': 'Pure Go template engine. No API keys, no network calls, no costs, no rate limits.',
+    'f2.title': '47 Roles',         'f2.desc': 'Professional archetypes across 12 categories. Each carries skills, tone, and context questions.',
+    'f3.title': 'Multi-role',       'f3.desc': 'Combine multiple roles. Their skills and tone instructions merge into one cohesive prompt.',
+    'f4.title': 'Execution phases', 'f4.desc': 'Structure complex tasks into numbered phases, each with a title and detailed description.',
+    'f5.title': 'Gap detection',    'f5.desc': 'Required fields not covered by the narrative automatically become interactive questions.',
+    'f6.title': 'Desktop + TUI',    'f6.desc': 'Native desktop app (Wails v2) or terminal wizard (bubbletea). Same logic, your preference.',
+    'f7.title': 'Extensible',       'f7.desc': 'Add custom roles and models as plain Markdown files. No code changes needed.',
+    'f8.title': 'Cross-platform',   'f8.desc': 'macOS universal binary, Windows amd64, Linux. Bundled roles extracted on first launch.',
+    'roles.label': 'Role library',
+    'roles.title': '47 roles across 12 categories',
+    'roles.sub':   'Each role carries a professional description, skill set, communication tone, and context-filling questions.',
+    'roles.custom':'Add your own roles by dropping <code>.md</code> files in <code>~/.castorprompt/roles/</code>.',
+    'dl.label':  'Download',
+    'dl.title':  'Get CASTOR Builder',
+    'dl.sub':    'Native binaries for every platform. No runtime dependencies.',
+    'dl.source': 'Or build from source:',
+    'footer.made':    'Made with',
+    'footer.tagline': 'Prompt engineering without the AI',
+  }
+};
+
+let currentLang = 'pt';
+
+function setLang(lang) {
+  currentLang = lang;
+  const dict = I18N[lang];
+
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  document.title = lang === 'pt'
+    ? 'CASTOR Builder — Prompts estruturados para LLMs, sem IA'
+    : 'CASTOR Builder — Structured prompts for LLMs, no AI required';
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key] !== undefined) {
+      el.innerHTML = dict[key];
+    }
+  });
+
+  document.getElementById('btn-pt').classList.toggle('active', lang === 'pt');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+  localStorage.setItem('castor-lang', lang);
+}
+
+// init: use saved preference, else browser language, else pt
+(function () {
+  const saved = localStorage.getItem('castor-lang');
+  const browser = (navigator.language || 'pt').toLowerCase();
+  const lang = saved || (browser.startsWith('pt') ? 'pt' : 'en');
+  setLang(lang);
+})();
+</script>
 
 </body>
 </html>
