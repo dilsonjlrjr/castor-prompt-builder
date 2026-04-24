@@ -1,3 +1,27 @@
+# binários
 castor-prompt-builder
-prompts/
+castor-tui
 *.exe
+
+# prompts gerados
+prompts/
+
+# distribuição
+dist/
+
+# sistema
+.DS_Store
+**/.DS_Store
+Thumbs.db
+**/Thumbs.db
+
+# frontend
+desktop/frontend/package.json.md5
+desktop/frontend/public/
+
+# wails runtime gerado
+desktop/frontend/wailsjs/runtime/
+
+# binário de dev wails
+desktop/desktop
+

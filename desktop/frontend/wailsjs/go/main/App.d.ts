@@ -10,4 +10,4 @@ export function GetRoles():Promise<Array<main.RoleDTO>>;
 
 export function IsFirstRun():Promise<boolean>;
 
-export function ValidateAll():Promise<Array<{arquivo:string; tipo:string; ok:boolean; problema?:string}>>;
+export function ValidateAll():Promise<Array<main.FileStatus>>;

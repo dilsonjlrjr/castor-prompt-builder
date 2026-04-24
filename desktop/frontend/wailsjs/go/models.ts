@@ -106,6 +106,24 @@ export namespace main {
 	        this.opcoes = source["opcoes"];
 	    }
 	}
+	export class FileStatus {
+	    arquivo: string;
+	    tipo: string;
+	    ok: boolean;
+	    problema?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.arquivo = source["arquivo"];
+	        this.tipo = source["tipo"];
+	        this.ok = source["ok"];
+	        this.problema = source["problema"];
+	    }
+	}
 	
 	export class ModelDTO {
 	    id: string;
