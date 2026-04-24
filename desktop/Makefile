@@ -53,6 +53,7 @@ macos: generate-icns
 
 # ── Windows ──────────────────────────────────────────────────────────────────
 # Requer: brew install mingw-w64
+# Distribui: exe + pasta roles/ (devem ficar juntos — o app lê roles/ ao lado do .exe)
 windows:
 	@echo "▶ Building Windows amd64..."
 	@mkdir -p $(OUTDIR)
@@ -61,8 +62,11 @@ windows:
 		exit 1; \
 	fi
 	$(WAILS) build -clean -platform windows/amd64 -o $(APP)
-	@cp "build/bin/$(APP)" $(OUTDIR)/$(APP)-windows-amd64.exe
+	@cp "build/bin/$(APP)" "$(OUTDIR)/$(APP)-windows-amd64.exe"
+	@rm -rf "$(OUTDIR)/roles"
+	@cp -r "../roles" "$(OUTDIR)/roles"
 	@echo "✓ Windows → $(OUTDIR)/$(APP)-windows-amd64.exe"
+	@echo "✓ Roles  → $(OUTDIR)/roles/ (mantenha ao lado do .exe)"
 
 # ── Linux ────────────────────────────────────────────────────────────────────
 # Usa Docker com a imagem oficial do Wails (inclui WebKit2GTK)
