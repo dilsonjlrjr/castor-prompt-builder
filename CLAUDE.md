@@ -1,4 +1,4 @@
-# Prompt Builder — Context & Design
+# CASTOR Builder — Context & Design
 
 > Documento de referência do projeto. Atualizar conforme decisões evoluem.
 
@@ -6,87 +6,113 @@
 
 ## Visão Geral
 
-CLI em Go que recebe um **papel** (escolhido de um banco) e uma **narrativa livre**, extrai os campos necessários, preenche os gaps, opcionalmente faseia o processo e gera um prompt estruturado e semanticamente rico salvo em `.md`.
+App desktop (Wails v2 + Svelte + Go) que guia o usuário em um wizard para construir prompts estruturados e semanticamente ricos. O usuário escolhe um **modelo de prompt**, seleciona um ou mais **papéis** (especialistas), descreve a tarefa em linguagem livre, responde perguntas de contexto (gaps) e opcionalmente define fases de execução.
 
 Sem IA no processo. Tudo é parsing, heurística e template engine próprio.
 
 ---
 
-## Fluxo do Programa
+## Stack
 
-```
-1. Selecionar modelo de prompt   → lista os .md em /models
-2. Selecionar papel              → lista os .md em /roles
-3. Inserir narrativa             → textarea livre
-4. Preencher gaps                → campos obrigatórios não extraídos viram perguntas
-5. Fasear? (s/n)                 → se sim, coleta steps (título + descrição por fase)
-6. Montar prompt                 → renderiza template do modelo com os valores
-7. Salvar                        → /prompts/<data>_<papel>_<slug>.md
-```
+| Camada | Tecnologia |
+|---|---|
+| Desktop framework | [Wails v2](https://wails.io) |
+| Backend | Go |
+| Frontend | Svelte + TypeScript + Tailwind (via Vite) |
+| Parser frontmatter | `gopkg.in/yaml.v3` |
+| Template engine | Próprio (`{{campo}}`, `{{#if}}`, `{{#steps}}`, `{{#each}}`) |
 
 ---
 
 ## Estrutura de Diretórios
 
 ```
-prompt-builder/
-├── main.go
-├── context.md               ← este arquivo
-├── roles/                   ← banco de papéis
-│   ├── marketing_content.md
-│   ├── data_analyst.md
-│   └── devops_engineer.md
-├── models/                  ← modelos de prompt
-│   ├── rtf.md
-│   ├── race.md
-│   ├── risen.md
-│   └── create.md
-└── prompts/                 ← gerados pelo programa
-    └── 20240418_marketing_content_plano_editorial.md
+castor-prompt-builder/
+├── CLAUDE.md
+├── desktop/                        ← projeto Wails
+│   ├── main.go
+│   ├── app.go                      ← lógica principal (GetModels, GetRoles, BuildPrompt)
+│   ├── validate.go                 ← ValidateAll — valida models e roles ao iniciar
+│   ├── bundled/                    ← models e roles embutidos via embed.FS
+│   │   ├── models/                 ← rtf.md, race.md, risen.md, create.md
+│   │   └── roles/                  ← papéis organizados por categoria/
+│   ├── build/                      ← assets de build (ícones, manifests)
+│   ├── frontend/
+│   │   ├── src/App.svelte          ← toda a UI (wizard de 6 telas)
+│   │   ├── wailsjs/go/main/        ← bindings gerados (App.js, App.d.ts)
+│   │   └── wailsjs/go/models.ts   ← DTOs gerados
+│   └── pkg/
+│       ├── parser/                 ← leitura dos .md de roles e models
+│       └── engine/                 ← template engine
+├── dist/                           ← artefatos de distribuição
+│   ├── castor-builder-macos.app
+│   └── castor-builder-windows-amd64.exe
+└── Makefile                        ← targets: macos, windows, icons
 ```
 
 ---
 
-## Especificação: Arquivo de Papel (`/roles/*.md`)
+## Fluxo do App (Wizard)
+
+```
+[1] Validação        → tela animada ao iniciar, valida cada model/role
+[2] Onboarding       → carrossel na primeira execução (IsFirstRun)
+[3] Selecionar modelo → RTF / RACE / RISEN / CREATE
+[4] Selecionar papéis → multi-seleção com busca por categoria
+[5] Inserir narrativa → textarea livre
+[6] Preencher gaps    → campos do modelo + gaps_comuns dos papéis (uma pergunta por tela)
+[7] Definir fases     → opcional, título + descrição por fase
+[8] Resultado         → prompt gerado, copiável
+```
+
+---
+
+## Comportamento do BuildPrompt (app.go)
+
+1. Localiza o modelo pelo `model_id`
+2. Monta `vals` com os `gap_answers` que têm `field_id` não vazio (campos do modelo)
+3. Chama `engine.Render(template, vals)` → prompt base
+4. **Extras injetados após o render:**
+   - **Fases**: se o usuário definiu steps e o template não tem `{{#steps`, injeta `## Fases de execução` com cada fase numerada
+   - **Habilidades**: agrega `habilidades` de todos os papéis (dedup) → `## Habilidades relevantes`
+   - **Tom**: agrega `tom` de cada papel → `## Tom de comunicação`
+   - **Contexto dos papéis**: gaps de `gaps_comuns` respondidos pelo usuário (field_id vazio) → `## Contexto dos papéis` com atribuição (`RoleNome — Pergunta`)
+
+---
+
+## Especificação: Arquivo de Papel (`bundled/roles/**/*.md`)
 
 ```markdown
 ---
-id: marketing_content
-nome: Especialista em Marketing de Conteúdo
-tom: analítico e estratégico
+id: arquiteto_cloud
+nome: Arquiteto Cloud
+categoria: arquitetura
+tom: técnico e pragmático
 habilidades:
-  - planejamento editorial
-  - análise de métricas
-  - SEO e copywriting
-  - mapeamento de personas
+  - AWS / GCP / Azure
+  - infraestrutura como código
 gaps_comuns:
-  - Qual o público-alvo?
-  - Qual o tom de comunicação da marca?
-  - Existe orçamento definido?
-  - Quais canais já são utilizados?
+  - Qual o cloud provider principal?
+  - Existe multi-cloud ou hybrid cloud?
 ---
 
-Profissional com sólida experiência em estratégia editorial B2B e B2C.
-Domina a criação de planos de conteúdo orientados a métricas, com foco
-em engajamento, geração de leads e posicionamento de marca. Capaz de
-alinhar narrativa de conteúdo ao funil de vendas e aos objetivos do negócio.
+Descrição rica do papel (vai no prompt gerado).
 ```
 
 ### Campos do frontmatter
 
-| Campo | Tipo | Descrição |
+| Campo | Tipo | Uso |
 |---|---|---|
-| `id` | string | Referência interna, deve bater com o nome do arquivo |
-| `nome` | string | Exibido na lista de seleção do CLI |
-| `tom` | string | Instrução de estilo inserida no prompt |
-| `habilidades` | list | Enriquece a descrição do Role no prompt |
-| `gaps_comuns` | list | Perguntas específicas deste papel quando campo não preenchido |
-
-O **corpo** do `.md` (abaixo do frontmatter) é a descrição rica do papel — vai direto no prompt gerado.
+| `id` | string | Referência interna |
+| `nome` | string | Exibido na UI |
+| `categoria` | string | Agrupa na tela de seleção |
+| `tom` | string | Injetado como `## Tom de comunicação` |
+| `habilidades` | list | Injetadas como `## Habilidades relevantes` |
+| `gaps_comuns` | list | Perguntas de contexto específicas do papel |
 
 ---
 
-## Especificação: Arquivo de Modelo (`/models/*.md`)
+## Especificação: Arquivo de Modelo (`bundled/models/*.md`)
 
 ```markdown
 ---
@@ -98,53 +124,14 @@ campos:
     label: Papel
     tipo: text
     obrigatorio: true
-
   - id: action
     label: Ação
     tipo: textarea
     obrigatorio: true
-
-  - id: context
-    label: Contexto
-    tipo: textarea
-    obrigatorio: true
-
-  - id: tom
-    label: Tom de comunicação
-    tipo: select
-    opcoes:
-      - formal
-      - informal
-      - técnico
-      - persuasivo
-    obrigatorio: false
-
-  - id: canais
-    label: Canais de distribuição
-    tipo: multiselect
-    opcoes:
-      - blog
-      - LinkedIn
-      - email
-      - Instagram
-    obrigatorio: false
-
   - id: fases
     label: Fases de execução
     tipo: steps
     obrigatorio: false
-    step_campos:
-      - id: titulo
-        label: Título da fase
-        tipo: text
-      - id: descricao
-        label: O que deve ser feito nesta fase
-        tipo: textarea
-
-  - id: expectation
-    label: Expectativa
-    tipo: textarea
-    obrigatorio: true
 ---
 
 ## Template de saída
@@ -153,263 +140,98 @@ Você é {{role}}.
 
 {{action}}
 
-O contexto é o seguinte: {{context}}
-
-{{#if tom}}
-Adote um tom {{tom}}.
-{{/if}}
-
 {{#steps fases}}
 ## {{titulo}}
 {{descricao}}
 {{/steps}}
-
-{{#if canais}}
-Considere os seguintes canais: {{#each canais}}{{.}}{{/each}}.
-{{/if}}
-
-Espera-se que {{expectation}}
 ```
 
----
+### Tipos de Campos
 
-## Tipos de Campos
+| Tipo | Comportamento |
+|---|---|
+| `text` | Input linha única |
+| `textarea` | Input multi-linha |
+| `select` | Escolhe uma opção |
+| `multiselect` | Escolhe várias opções |
+| `list` | Adiciona itens livres |
+| `steps` | Coleta título + descrição por fase |
 
-| Tipo | Comportamento no CLI | Uso típico |
-|---|---|---|
-| `text` | Input livre, linha única | Título, tom livre |
-| `textarea` | Input livre, multi-linha (Enter duplo encerra) | Narrativa, contexto, descrição |
-| `select` | Lista numerada, escolhe uma | Tom, formato de saída |
-| `multiselect` | Lista numerada, escolhe várias (ex: `1,3`) | Canais, públicos |
-| `list` | Adiciona itens livres um a um (linha vazia encerra) | Restrições, habilidades extras |
-| `steps` | Pergunta quantidade, depois coleta título + descrição por fase | Fases de execução |
-
----
-
-## Diretivas de Template
+### Diretivas de Template
 
 | Diretiva | Comportamento |
 |---|---|
-| `{{campo}}` | Substitui pelo valor simples do campo |
-| `{{#if campo}}...{{/if}}` | Renderiza bloco apenas se campo foi preenchido |
-| `{{#steps campo}}...{{/steps}}` | Itera lista de steps, expõe `{{titulo}}` e `{{descricao}}` |
-| `{{#each campo}}...{{/each}}` | Itera `list` ou `multiselect`, expõe `{{.}}` para o item atual |
+| `{{campo}}` | Substitui pelo valor do campo |
+| `{{#if campo}}...{{/if}}` | Renderiza se campo preenchido |
+| `{{#steps campo}}...{{/steps}}` | Itera lista de steps |
+| `{{#each campo}}...{{/each}}` | Itera list/multiselect |
 
 ---
 
-## Modelos Planejados
+## Modelos Disponíveis
 
 | ID | Nome | Quando usar |
 |---|---|---|
 | `rtf` | RTF — Role, Task, Feature | Tarefas simples e diretas |
 | `race` | RACE — Role, Action, Context, Expectation | Contexto rico + entregável claro |
-| `risen` | RISEN — Role, Input, Steps, Expectation, Narrowing | Quando precisa de steps detalhados com restrições |
-| `create` | CREATE — Context, Role, Examples, Audience, Tone, Expectation | Conteúdo criativo com restrições de público e tom |
-| `cot` | Chain of Thought | Raciocínio passo a passo explícito |
+| `risen` | RISEN — Role, Input, Steps, Expectation, Narrowing | Steps detalhados com restrições |
+| `create` | CREATE — Context, Role, Examples, Audience, Tone, Expectation | Conteúdo criativo |
 
 ---
 
-## Prompt Gerado — Exemplo de Saída
+## Diretório do Usuário (`~/.castorprompt`)
 
-```markdown
-# Prompt — Especialista em Marketing de Conteúdo
-_Modelo: RACE | Gerado em: 2024-04-18_
+Criado na primeira execução (`IsFirstRun`). Modelos bundled são copiados para lá.  
+O usuário pode adicionar papéis customizados em `~/.castorprompt/roles/`.
 
-## Papel
-Você é um Especialista em Marketing de Conteúdo. Profissional com sólida
-experiência em estratégia editorial B2B e B2C. Domina a criação de planos
-de conteúdo orientados a métricas, com foco em engajamento, geração de leads
-e posicionamento de marca.
-
-## Ação
-Crie um plano editorial para os próximos 3 meses.
-
-## Contexto
-Startup B2B de SaaS enfrentando queda de 15% no engajamento do blog.
-Público-alvo: desenvolvedores e CTOs de empresas mid-market.
-
-## Fase 1 — Diagnóstico
-Analise as possíveis causas da queda de engajamento considerando o perfil
-da empresa e o público informado. Liste os 3 principais fatores com justificativa.
-
-## Fase 2 — Plano Editorial
-Com base no diagnóstico, estruture o plano editorial para 3 meses. Inclua
-temas por mês, frequência de publicação e canais de distribuição.
-
-## Fase 3 — Entregável Final
-Consolide em um documento estruturado pronto para apresentação ao time de marketing.
-
-## Expectativa
-Documento com temas, frequência e canais de distribuição por mês.
-
----
-> ⚠️ Para refinar este prompt considere informar:
-> - Orçamento disponível para produção de conteúdo?
-> - Existe time interno ou será freelancer?
-```
+**Prioridade de carregamento (execDir):**
+1. `./models` e `./roles` junto ao binário (dev mode)
+2. `~/.castorprompt/models` e `~/.castorprompt/roles` (produção)
 
 ---
 
-## Convenção de Nomenclatura dos Prompts Salvos
+## Validação ao Inicializar
 
-```
-/prompts/<YYYYMMDD>_<role_id>_<slug-da-narrativa>.md
+`ValidateAll()` roda ao montar o app, valida cada model e role carregado:
+- Model: id, nome, template não vazio, campos definidos, tipos válidos, select com opções
+- Role: id, nome, descrição
 
-Exemplo:
-/prompts/20240418_marketing_content_plano-editorial-3-meses.md
-```
-
-O slug é gerado a partir das primeiras palavras da narrativa, em lowercase, separadas por hífen, sem acentos.
+A tela de validação exibe cada arquivo com animação item a item. Erros bloqueiam e listam os problemas. Se tudo OK, fecha automaticamente em 800ms.
 
 ---
 
-## Interface — TUI (Terminal UI)
+## DTOs (models.ts / app.go)
 
-### Stack escolhido
-
-| Lib | Papel |
+| DTO | Campos relevantes |
 |---|---|
-| [`bubbletea`](https://github.com/charmbracelet/bubbletea) | Engine principal, arquitetura Elm (Model / Update / View) |
-| [`bubbles`](https://github.com/charmbracelet/bubbles) | Componentes prontos: list, textarea, textinput, spinner |
-| [`lipgloss`](https://github.com/charmbracelet/lipgloss) | Estilo, cores, bordas, layout |
-
-### Navegação
-
-Wizard linear com possibilidade de **voltar** para tela anterior.
-
-### Fluxo de telas
-
-```
-[1] Selecionar modelo
-[2] Selecionar papel
-[3] Inserir narrativa
-[4] Preencher gaps        (uma pergunta por tela)
-[5] Fasear? s/n
-[6] Definir fases         (uma fase por tela, se aplicável)
-[7] Confirmação + salvar
-```
-
-### Esboço das telas
-
-```
-┌─────────────────────────────────────┐
-│  Prompt Builder                     │
-├─────────────────────────────────────┤
-│  Selecione o modelo                 │
-│                                     │
-│  > RACE                             │
-│    RTF                              │
-│    RISEN                            │
-│                                     │
-│  ↑↓ navegar   Enter selecionar      │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  Prompt Builder        modelo: RACE │
-├─────────────────────────────────────┤
-│  Selecione o papel                  │
-│                                     │
-│  > Especialista em Marketing        │
-│    Analista de Dados                │
-│    Engenheiro DevOps                │
-│                                     │
-│  ↑↓ navegar   Enter selecionar      │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  Prompt Builder          papel: MKT │
-├─────────────────────────────────────┤
-│  Narrativa                          │
-│  ┌───────────────────────────────┐  │
-│  │ A empresa é uma startup B2B   │  │
-│  │ de SaaS com queda de 15%...   │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  Ctrl+S confirmar   Esc voltar      │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  Gaps detectados        2 de 3      │
-├─────────────────────────────────────┤
-│  Qual o público-alvo?               │
-│  ┌───────────────────────────────┐  │
-│  │ Desenvolvedores e CTOs        │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  Tab próximo   Esc voltar           │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  Fase 1 de 3                        │
-├─────────────────────────────────────┤
-│  Título                             │
-│  ┌───────────────────────────────┐  │
-│  │ Diagnóstico                   │  │
-│  └───────────────────────────────┘  │
-│  Descrição                          │
-│  ┌───────────────────────────────┐  │
-│  │ Analise as causas da queda... │  │
-│  └───────────────────────────────┘  │
-│                                     │
-│  Tab próximo campo   Ctrl+S avançar │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│  ✓ Prompt gerado!                   │
-├─────────────────────────────────────┤
-│  Salvo em:                          │
-│  prompts/20240418_mkt_plano.md      │
-│                                     │
-│  > Ver prompt                       │
-│    Novo prompt                      │
-│    Sair                             │
-└─────────────────────────────────────┘
-```
-
----
-
-## Estrutura do Projeto
-
-```
-prompt-builder/
-├── main.go
-├── go.mod
-├── context.md
-├── roles/
-│   ├── marketing_content.md
-│   ├── data_analyst.md
-│   └── devops_engineer.md
-├── models/
-│   ├── rtf.md
-│   ├── race.md
-│   ├── risen.md
-│   └── create.md
-├── prompts/                          ← gerados pelo programa
-│   └── 20240418_marketing_content_plano-editorial.md
-└── internal/
-    ├── parser/                       ← leitura dos .md de roles e models
-    ├── engine/                       ← template engine ({{campo}}, {{#if}}, etc)
-    └── tui/                          ← telas bubbletea
-```
+| `BuildRequestDTO` | `model_id`, `role_ids[]`, `narrativa`, `gap_answers[]`, `steps[]` |
+| `GapAnswerDTO` | `field_id`, `pergunta`, `resposta`, `role_nome` |
+| `BuildResultDTO` | `conteudo`, `caminho`, `erro` |
+| `ModelDTO` | `id`, `nome`, `descricao`, `campos[]` |
+| `RoleDTO` | `id`, `nome`, `categoria`, `tom`, `gaps_comuns[]`, `habilidades[]` |
+| `FileStatus` | `arquivo`, `tipo`, `ok`, `problema` |
 
 ---
 
 ## Decisões Tomadas
 
+- [x] Interface: app desktop com Wails v2 (abandonada TUI bubbletea)
 - [x] Parser do frontmatter: `gopkg.in/yaml.v3`
-- [x] Interface: TUI com `bubbletea` + `bubbles` + `lipgloss`
-- [x] Navegação: wizard linear com voltar (Esc)
-- [x] Gaps não respondidos: entram no prompt como seção `⚠️` (visível pra IA também)
-- [x] Nome do arquivo salvo: gerado automaticamente ou usuário digita título?
+- [x] Navegação: wizard linear com voltar
+- [x] Gaps de papel: coletados, deduplicados entre roles, injetados com atribuição
+- [x] Habilidades e tom dos papéis: injetados como seções extras no prompt
+- [x] Fases: fallback genérico para modelos sem `{{#steps}}`
+- [x] Validação animada ao inicializar
+- [x] Onboarding carrossel na primeira execução
+- [x] Diretório `~/.castorprompt` criado na primeira run com bundled models
+- [x] Build: macOS universal + Windows amd64 via Makefile
+
+---
 
 ## Diretrizes
 
-- Inicialize git.
-- NUNCA ao fazer commit colocar o claude como autor;
-- Sempre usar o context-mode em todos os processos;
-- Sempre usar caveman;
-- Crie um mascote com bubbletea, um CASTOR. O nome do projeto á CASTOR BUILDER;
-- Se perceber que as features são grandes crie fases;
-- Ao fim de cada fase ou conclusão de atividade faça commit usando git semântico
-
-
+- NUNCA ao fazer commit colocar o claude como autor
+- Sempre usar o context-mode em todos os processos
+- Sempre usar caveman
+- Se perceber que as features são grandes, crie fases
+- Ao fim de cada fase ou conclusão de atividade, faça commit usando git semântico
