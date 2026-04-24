@@ -165,6 +165,7 @@
     arquitetura: '🏗️', frontend: '🎨', backend: '⚙️',
     devops: '☁️', banco: '🗄️', dados: '📊',
     gestao: '📋', seguranca: '🔐', design: '✏️', marketing: '📣',
+    qa: '🧪', documentacao: '📝',
   }
   const CAT_LABEL: Record<string, string> = {
     arquitetura: 'Arquitetura',   frontend:  'Frontend & Mobile',
@@ -172,6 +173,7 @@
     banco:       'Banco de Dados',dados:     'Dados & IA',
     gestao:      'Gestão',        seguranca: 'Segurança',
     design:      'Design',        marketing: 'Marketing',
+    qa:          'QA & Testes',   documentacao: 'Documentação',
   }
   function catLabel(cat: string) { return CAT_LABEL[cat] ?? cat }
   function catIcon(cat: string)  { return CAT_ICON[cat]  ?? '📁' }
