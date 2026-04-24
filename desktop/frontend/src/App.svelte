@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-  import { GetModels, GetRoles, BuildPrompt, IsFirstRun } from '../wailsjs/go/main/App.js'
+  import { GetModels, GetRoles, BuildPrompt, IsFirstRun, ValidateAll } from '../wailsjs/go/main/App.js'
   import { main } from '../wailsjs/go/models'
 
   // ---- tipos ----
@@ -13,7 +13,8 @@
   type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result'
 
   // Gap unificado: campo do modelo (tem fieldId) ou gap de papel (fieldId = '')
-  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean }
+  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean; roleNome?: string }
+  type FileStatus = { arquivo: string; tipo: string; ok: boolean; problema?: string }
 
   // ---- estado ----
   let models:  Model[] = []
@@ -37,6 +38,13 @@
   let resultError   = ''
   let building      = false
   let copied        = false
+
+  // ---- validação de arquivos ----
+  let showValidation   = false
+  let validationItems: FileStatus[] = []
+  let validationVisible = 0   // quantos já aparecem na lista (animado)
+  let validationDone   = false
+  $: validationErrors = validationItems.filter(f => !f.ok)
 
   // ---- onboarding carousel ----
   let showOnboarding = false
@@ -97,12 +105,33 @@
   }
   function tagColor(t: string) { return MODEL_TAG_COLOR[t] ?? '#6e7681' }
 
+  async function runValidation() {
+    showValidation   = true
+    validationDone   = false
+    validationVisible = 0
+    validationItems  = []
+    const results = await ValidateAll()
+    validationItems = results
+    // anima revelação item a item
+    for (let i = 0; i < results.length; i++) {
+      await new Promise(r => setTimeout(r, 60))
+      validationVisible = i + 1
+    }
+    validationDone = true
+    // auto-fecha se sem erros
+    if (validationErrors.length === 0) {
+      await new Promise(r => setTimeout(r, 800))
+      showValidation = false
+    }
+  }
+
   // ---- ciclo de vida ----
   onMount(async () => {
     models = await GetModels()
     roles  = await GetRoles()
     const first = await IsFirstRun()
     if (first) { showOnboarding = true; onboardSlide = 0 }
+    await runValidation()
   })
 
   // ---- stepper ----
@@ -193,13 +222,19 @@
       obrigatorio: c.obrigatorio,
     }))
 
-    // 2) Gaps de papel (sem fieldId — são contexto extra, nunca obrigatórios)
-    const roleGapStrings = [...selectedRoles]
-      .flatMap(id => roles.find(r => r.id === id)?.gaps_comuns ?? [])
-    const seen = new Set(modelGaps.map(g => g.pergunta))
-    const roleGaps: Gap[] = [...new Set(roleGapStrings)]
-      .filter(q => !seen.has(q))
-      .map(q => ({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [], obrigatorio: false }))
+    // 2) Gaps de papel — com atribuição de papel e dedup entre roles
+    const seenQ = new Set(modelGaps.map(g => g.pergunta))
+    const roleGaps: Gap[] = []
+    for (const id of selectedRoles) {
+      const role = roles.find(r => r.id === id)
+      if (!role) continue
+      for (const q of role.gaps_comuns ?? []) {
+        if (!seenQ.has(q)) {
+          seenQ.add(q)
+          roleGaps.push({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [], obrigatorio: false, roleNome: role.nome })
+        }
+      }
+    }
 
     gaps      = [...modelGaps, ...roleGaps]
     gapIndex  = 0
@@ -232,7 +267,7 @@
       model_id:    selectedModel!.id,
       role_ids:    [...selectedRoles],
       narrativa:   narrative,
-      gap_answers: gaps.map((g, i) => ({ field_id: g.fieldId, pergunta: g.pergunta, resposta: gapAnswers[i] ?? '' })),
+      gap_answers: gaps.map((g, i) => ({ field_id: g.fieldId, pergunta: g.pergunta, resposta: gapAnswers[i] ?? '', role_nome: g.roleNome ?? '' })),
       steps:       usePhases ? phases : [],
     }))
     resultContent = result.conteudo
@@ -270,6 +305,86 @@
 
   <!-- titlebar drag area -->
   <div class="h-8 flex-shrink-0" style="--wails-draggable:drag" />
+
+  <!-- ============================================================
+       VALIDAÇÃO OVERLAY
+  ============================================================= -->
+  {#if showValidation}
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         in:fade={{ duration: 250 }} out:fade={{ duration: 200 }}>
+      <div class="absolute inset-0 bg-[#04040a]/85 backdrop-blur-md"></div>
+
+      <div class="relative z-10 w-[500px] rounded-2xl border border-[#1e1e30]
+                  bg-[#0d0d18] shadow-2xl overflow-hidden"
+           in:fly={{ y: 20, duration: 300, easing: cubicOut }}>
+
+        <!-- header -->
+        <div class="px-8 pt-8 pb-4">
+          <p class="text-[10px] tracking-[0.25em] uppercase text-[#f5a623] font-semibold mb-1">
+            {validationDone ? (validationErrors.length === 0 ? 'Tudo certo!' : `${validationErrors.length} problema${validationErrors.length > 1 ? 's' : ''} encontrado${validationErrors.length > 1 ? 's' : ''}`) : 'Verificando arquivos...'}
+          </p>
+          <h2 class="text-lg font-bold text-[#e8eaf0]">Validação de arquivos</h2>
+        </div>
+
+        <!-- gauge -->
+        <div class="px-8 mb-4">
+          <div class="h-1.5 w-full rounded-full bg-[#1a1a28] overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300"
+                 style="width:{validationItems.length ? (validationVisible/validationItems.length)*100 : 0}%;
+                        background:{validationDone && validationErrors.length > 0 ? '#f85149' : '#f5a623'}"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-[10px] text-[#4a5060]">{validationVisible} / {validationItems.length} arquivos</span>
+            {#if validationDone}
+              <span class="text-[10px] font-semibold"
+                    class:text-[#3fb950]={validationErrors.length === 0}
+                    class:text-[#f85149]={validationErrors.length > 0}>
+                {validationErrors.length === 0 ? '✓ sem problemas' : `✗ ${validationErrors.length} com erro`}
+              </span>
+            {/if}
+          </div>
+        </div>
+
+        <!-- lista de arquivos -->
+        <div class="px-8 pb-4 max-h-64 overflow-y-auto flex flex-col gap-0.5">
+          {#each validationItems.slice(0, validationVisible) as item}
+            <div class="flex items-start gap-2.5 py-1.5 text-xs
+                        {!item.ok ? 'text-[#f85149]' : 'text-[#6e7681]'}">
+              <span class="flex-shrink-0 mt-0.5 font-bold">
+                {item.ok ? '✓' : '✗'}
+              </span>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono truncate">{item.arquivo}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0
+                               {item.tipo === 'model'
+                                 ? 'bg-[#f5a623]/15 text-[#f5a623]'
+                                 : 'bg-[#a371f7]/15 text-[#a371f7]'}">
+                    {item.tipo}
+                  </span>
+                </div>
+                {#if !item.ok && item.problema}
+                  <p class="text-[#f85149]/80 mt-0.5 leading-snug">{item.problema}</p>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+
+        <!-- footer -->
+        {#if validationDone}
+          <div class="flex justify-end px-8 py-5 border-t border-[#1a1a28]">
+            <button on:click={() => showValidation = false}
+              class="px-6 py-2 rounded-lg text-sm font-bold text-black transition-all
+                     hover:brightness-110 active:scale-[0.97]
+                     {validationErrors.length > 0 ? 'bg-[#f85149]' : 'bg-[#3fb950]'}">
+              {validationErrors.length > 0 ? `Continuar mesmo assim →` : 'Continuar →'}
+            </button>
+          </div>
+        {/if}
+      </div>
+    </div>
+  {/if}
 
   <!-- ============================================================
        ONBOARDING OVERLAY
@@ -651,14 +766,23 @@
             </p>
 
             <!-- pergunta com destaque -->
-            <div class="flex gap-3 p-4 rounded-xl mb-4 border
+            <div class="p-4 rounded-xl mb-4 border
                         {gapError
                           ? 'border-[#f85149]/40 bg-[#f85149]/5'
                           : 'border-[#f5a623]/20 bg-[#f5a623]/5'}">
-              <span class="text-lg flex-shrink-0 {gapError ? 'text-[#f85149]' : 'text-[#f5a623]'}">?</span>
-              <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
-                {gaps[gapIndex].pergunta}
-              </p>
+              <div class="flex items-start justify-between gap-3">
+                <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
+                  {gaps[gapIndex].pergunta}
+                </p>
+                <span class="text-lg flex-shrink-0 {gapError ? 'text-[#f85149]' : 'text-[#f5a623]'}">?</span>
+              </div>
+              {#if gaps[gapIndex].roleNome}
+                <div class="mt-2 flex items-center gap-1.5">
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#a371f7]/15 text-[#a371f7] font-semibold tracking-wide border border-[#a371f7]/20">
+                    🎭 {gaps[gapIndex].roleNome}
+                  </span>
+                </div>
+              {/if}
             </div>
 
             <!-- select: botões de opção -->

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -157,11 +158,12 @@ type ModelDTO struct {
 }
 
 type RoleDTO struct {
-	ID         string   `json:"id"`
-	Nome       string   `json:"nome"`
-	Categoria  string   `json:"categoria"`
-	Tom        string   `json:"tom"`
-	GapsComuns []string `json:"gaps_comuns"`
+	ID          string   `json:"id"`
+	Nome        string   `json:"nome"`
+	Categoria   string   `json:"categoria"`
+	Tom         string   `json:"tom"`
+	GapsComuns  []string `json:"gaps_comuns"`
+	Habilidades []string `json:"habilidades"`
 }
 
 // GapAnswerDTO: FieldID preenchido para campos do modelo; vazio para gaps de papel.
@@ -169,6 +171,7 @@ type GapAnswerDTO struct {
 	FieldID  string `json:"field_id,omitempty"`
 	Pergunta string `json:"pergunta"`
 	Resposta string `json:"resposta"`
+	RoleNome string `json:"role_nome,omitempty"` // preenchido para gaps de papel
 }
 
 type StepDTO struct {
@@ -225,11 +228,12 @@ func (a *App) GetRoles() []RoleDTO {
 	out := make([]RoleDTO, len(a.roles))
 	for i, r := range a.roles {
 		out[i] = RoleDTO{
-			ID:         r.ID,
-			Nome:       r.Nome,
-			Categoria:  r.Categoria,
-			Tom:        r.Tom,
-			GapsComuns: r.GapsComuns,
+			ID:          r.ID,
+			Nome:        r.Nome,
+			Categoria:   r.Categoria,
+			Tom:         r.Tom,
+			GapsComuns:  r.GapsComuns,
+			Habilidades: r.Habilidades,
 		}
 	}
 	return out
@@ -272,12 +276,11 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 	vals.Fields["task"]    = req.Narrativa
 	vals.Fields["input"]   = req.Narrativa
 
-	// gap answers: usa FieldID para mapear ao campo correto do modelo
+	// gap answers: campos do modelo (FieldID preenchido)
 	for _, ga := range req.GapAnswers {
 		if strings.TrimSpace(ga.Resposta) == "" || ga.FieldID == "" {
 			continue
 		}
-		// descobre o tipo do campo para rotear corretamente
 		var tipo parser.FieldType
 		for _, c := range modelo.Campos {
 			if c.ID == ga.FieldID {
@@ -286,7 +289,6 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 			}
 		}
 		if tipo == parser.FieldList || tipo == parser.FieldMultiselect {
-			// lista: uma entrada por linha → vals.Lists para {{#each}} funcionar
 			var items []string
 			for _, line := range strings.Split(ga.Resposta, "\n") {
 				if t := strings.TrimSpace(line); t != "" {
@@ -301,7 +303,7 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 		}
 	}
 
-	// fases
+	// fases — injeta no vals.Steps["fases"] para {{#steps fases}}
 	if len(req.Steps) > 0 {
 		steps := make([]parser.Step, len(req.Steps))
 		for i, s := range req.Steps {
@@ -311,5 +313,80 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 	}
 
 	rendered := engine.Render(modelo.Template, vals)
+
+	// ── seções extras (fora do template principal) ───────────────────────────
+
+	var extras strings.Builder
+
+	// fases: se o template não tem {{#steps}}, injeta como seção genérica
+	if len(req.Steps) > 0 && !strings.Contains(modelo.Template, "{{#steps") {
+		extras.WriteString("\n\n---\n## Fases de execução\n\n")
+		for i, s := range req.Steps {
+			extras.WriteString(fmt.Sprintf("### Fase %d — %s\n%s\n\n", i+1, s.Titulo, s.Descricao))
+		}
+	}
+
+	// habilidades dos papéis selecionados (dedup)
+	seenH := map[string]bool{}
+	var habs []string
+	for _, rid := range req.RoleIDs {
+		for _, r := range a.roles {
+			if r.ID == rid {
+				for _, h := range r.Habilidades {
+					if !seenH[h] {
+						seenH[h] = true
+						habs = append(habs, h)
+					}
+				}
+				break
+			}
+		}
+	}
+	if len(habs) > 0 {
+		extras.WriteString("\n\n---\n## Habilidades relevantes\n")
+		for _, h := range habs {
+			extras.WriteString("- " + h + "\n")
+		}
+	}
+
+	// tom dos papéis
+	var toms []string
+	for _, rid := range req.RoleIDs {
+		for _, r := range a.roles {
+			if r.ID == rid && r.Tom != "" {
+				toms = append(toms, r.Nome+": "+r.Tom)
+				break
+			}
+		}
+	}
+	if len(toms) > 0 {
+		extras.WriteString("\n\n---\n## Tom de comunicação\n")
+		for _, t := range toms {
+			extras.WriteString("- " + t + "\n")
+		}
+	}
+
+	// gaps de papel (FieldID vazio) — contexto adicional fornecido pelo usuário
+	var gapCtx []string
+	for _, ga := range req.GapAnswers {
+		if ga.FieldID == "" && strings.TrimSpace(ga.Resposta) != "" {
+			label := ga.Pergunta
+			if ga.RoleNome != "" {
+				label = ga.RoleNome + " — " + ga.Pergunta
+			}
+			gapCtx = append(gapCtx, "**"+label+"**\n"+ga.Resposta)
+		}
+	}
+	if len(gapCtx) > 0 {
+		extras.WriteString("\n\n---\n## Contexto dos papéis\n\n")
+		for _, g := range gapCtx {
+			extras.WriteString(g + "\n\n")
+		}
+	}
+
+	if extras.Len() > 0 {
+		rendered += extras.String()
+	}
+
 	return BuildResultDTO{Conteudo: rendered}
 }

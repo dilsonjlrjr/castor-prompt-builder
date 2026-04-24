@@ -9,3 +9,5 @@ export function GetModels():Promise<Array<main.ModelDTO>>;
 export function GetRoles():Promise<Array<main.RoleDTO>>;
 
 export function IsFirstRun():Promise<boolean>;
+
+export function ValidateAll():Promise<Array<{arquivo:string; tipo:string; ok:boolean; problema?:string}>>;

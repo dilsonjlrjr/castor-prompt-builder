@@ -18,6 +18,7 @@ export namespace main {
 	    field_id?: string;
 	    pergunta: string;
 	    resposta: string;
+	    role_nome?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new GapAnswerDTO(source);
@@ -28,6 +29,7 @@ export namespace main {
 	        this.field_id = source["field_id"];
 	        this.pergunta = source["pergunta"];
 	        this.resposta = source["resposta"];
+	        this.role_nome = source["role_nome"];
 	    }
 	}
 	export class BuildRequestDTO {
@@ -147,6 +149,7 @@ export namespace main {
 	    categoria: string;
 	    tom: string;
 	    gaps_comuns: string[];
+	    habilidades: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new RoleDTO(source);
@@ -159,6 +162,7 @@ export namespace main {
 	        this.categoria = source["categoria"];
 	        this.tom = source["tom"];
 	        this.gaps_comuns = source["gaps_comuns"];
+	        this.habilidades = source["habilidades"];
 	    }
 	}
 

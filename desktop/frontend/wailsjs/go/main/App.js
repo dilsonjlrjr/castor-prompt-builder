@@ -17,3 +17,7 @@ export function GetRoles() {
 export function IsFirstRun() {
   return window['go']['main']['App']['IsFirstRun']();
 }
+
+export function ValidateAll() {
+  return window['go']['main']['App']['ValidateAll']();
+}
