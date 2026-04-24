@@ -964,10 +964,11 @@
       <!-- tutorial + versão -->
       <div class="mt-auto flex flex-col items-center gap-3 w-full">
         <button on:click={() => { tutorialSlide = 0; showTutorial = true }}
-          class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg
-                 border border-[#1e1e2e] text-[10px] text-[#3a3a50]
-                 hover:border-[#f5a623]/30 hover:text-[#f5a623] hover:bg-[#f5a623]/5
-                 transition-all group">
+          class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl
+                 bg-[#f5a623] text-black text-[11px] font-bold
+                 hover:bg-[#e09010] active:scale-[0.97] transition-all
+                 shadow-[0_0_16px_rgba(245,166,35,0.25)] hover:shadow-[0_0_24px_rgba(245,166,35,0.4)]
+                 group">
           <span class="text-sm group-hover:scale-110 transition-transform">🗺️</span>
           Ver tutorial
         </button>
