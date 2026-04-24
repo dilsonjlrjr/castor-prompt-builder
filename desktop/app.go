@@ -59,45 +59,65 @@ func ensureUserDir() bool {
 	return true
 }
 
-// execDir resolve o diretório base onde ficam models/ e roles/.
-//
-// Prioridade:
-//  1. Raiz do projeto via cwd (dev: desktop/../ tem models/ E roles/)
-//  2. ~/.castorprompt (produção, fallback)
-func execDir() string {
-	hasBoth := func(dir string) bool {
-		abs, err := filepath.Abs(dir)
+// findSubdir procura por um subdiretório (ex: "models" ou "roles") em vários
+// candidatos e retorna o caminho absoluto do primeiro que existir com conteúdo.
+// Candidatos verificados, em ordem:
+//  1. Diretório do executável          (produção: roles/ ao lado do .exe)
+//  2. cwd e pais (../  ../../)         (dev: projeto na raiz)
+//  3. ~/.castorprompt                  (produção: fallback padrão)
+func findSubdir(name string) string {
+	hasDir := func(parent string) (string, bool) {
+		abs, err := filepath.Abs(parent)
 		if err != nil {
-			return false
+			return "", false
 		}
-		_, errM := os.Stat(filepath.Join(abs, "models"))
-		_, errR := os.Stat(filepath.Join(abs, "roles"))
-		return errM == nil && errR == nil
+		target := filepath.Join(abs, name)
+		info, err := os.Stat(target)
+		if err != nil || !info.IsDir() {
+			return "", false
+		}
+		// verifica se tem ao menos um arquivo .md dentro (não vazio)
+		entries, _ := os.ReadDir(target)
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				return target, true
+			}
+			if e.IsDir() {
+				subs, _ := os.ReadDir(filepath.Join(target, e.Name()))
+				for _, s := range subs {
+					if strings.HasSuffix(s.Name(), ".md") {
+						return target, true
+					}
+				}
+			}
+		}
+		return "", false
 	}
 
-	// 1. Candidatos baseados no cwd — forte sinal de dev
+	// 1. Ao lado do executável
+	if exePath, err := os.Executable(); err == nil {
+		if p, ok := hasDir(filepath.Dir(exePath)); ok {
+			return p
+		}
+	}
+
+	// 2. cwd e pais (dev mode)
 	if cwd, err := os.Getwd(); err == nil {
-		for _, c := range []string{
-			cwd,
-			filepath.Join(cwd, ".."),
-			filepath.Join(cwd, "../.."),
-		} {
-			if hasBoth(c) {
-				if abs, err := filepath.Abs(c); err == nil {
-					return abs
-				}
+		for _, c := range []string{cwd, filepath.Join(cwd, ".."), filepath.Join(cwd, "../..")} {
+			if p, ok := hasDir(c); ok {
+				return p
 			}
 		}
 	}
 
-	// 2. ~/.castorprompt (produção)
+	// 3. ~/.castorprompt
 	if base, err := userDataDir(); err == nil {
-		if hasBoth(base) {
-			return base
+		if p, ok := hasDir(base); ok {
+			return p
 		}
 	}
 
-	return "."
+	return name // fallback relativo
 }
 
 // App é o struct principal exposto ao frontend via Wails.
@@ -122,15 +142,17 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	a.firstRun = ensureUserDir()
-	base := execDir()
 
-	models, err := parser.LoadAllModels(filepath.Join(base, "models"))
+	modelsDir := findSubdir("models")
+	rolesDir  := findSubdir("roles")
+
+	models, err := parser.LoadAllModels(modelsDir)
 	if err != nil {
 		models = []*parser.Model{}
 	}
 	a.models = models
 
-	roles, err := parser.LoadAllRoles(filepath.Join(base, "roles"))
+	roles, err := parser.LoadAllRoles(rolesDir)
 	if err != nil {
 		roles = []*parser.Role{}
 	}
