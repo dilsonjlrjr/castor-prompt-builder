@@ -189,14 +189,52 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if strings.TrimSpace(m.narrative) == "" {
 			return m, nil
 		}
-		// prepara gaps combinados dos papéis selecionados
-		var allGaps []string
+
+		// campos mapeados automaticamente — não viram gaps
+		autoMapped := map[string]bool{
+			"role": true, "action": true, "context": true,
+			"task": true, "input": true,
+		}
+
+		var newGaps []Gap
+		seenQ := map[string]bool{}
+
+		// 1. Campos do modelo (exceto auto-mapeados e steps)
+		model := m.models[m.selectedModel]
+		for _, c := range model.Campos {
+			if autoMapped[c.ID] || c.Tipo == parser.FieldSteps {
+				continue
+			}
+			newGaps = append(newGaps, Gap{
+				FieldID:     c.ID,
+				Pergunta:    c.Label,
+				Obrigatorio: c.Obrigatorio,
+				Tipo:        c.Tipo,
+				Opcoes:      c.Opcoes,
+			})
+			seenQ[c.Label] = true
+		}
+
+		// 2. gaps_comuns dos papéis selecionados (dedup entre papéis)
 		for idx, sel := range m.selectedRoles {
-			if sel {
-				allGaps = append(allGaps, m.roles[idx].GapsComuns...)
+			if !sel {
+				continue
+			}
+			r := m.roles[idx]
+			for _, q := range r.GapsComuns {
+				if !seenQ[q] {
+					seenQ[q] = true
+					newGaps = append(newGaps, Gap{
+						FieldID:  "",
+						Pergunta: q,
+						RoleNome: r.Nome,
+						Tipo:     parser.FieldTextarea,
+					})
+				}
 			}
 		}
-		m.gaps = unique(allGaps)
+
+		m.gaps = newGaps
 		m.gapIndex = 0
 		m.gapAnswers = make([]string, len(m.gaps))
 		if len(m.gaps) > 0 {

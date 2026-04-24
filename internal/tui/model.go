@@ -42,11 +42,11 @@ type AppModel struct {
 	textArea  textarea.Model
 
 	// valores coletados
-	narrative    string
-	values       *engine.Values
-	gaps         []string   // perguntas pendentes
-	gapIndex     int        // gap atual
-	gapAnswers   []string   // respostas
+	narrative  string
+	values     *engine.Values
+	gaps       []Gap  // perguntas pendentes (campos do modelo + gaps_comuns dos papéis)
+	gapIndex   int    // gap atual
+	gapAnswers []string
 
 	// scroll de telas
 	modelInfoOffset int // linha inicial do scroll em viewModelInfo
@@ -61,4 +61,15 @@ type AppModel struct {
 	// resultado
 	savedPath string
 	err       error
+}
+
+// Gap representa uma pergunta de contexto do wizard.
+// Pode ser um campo do modelo (FieldID preenchido) ou um gaps_comuns de papel (FieldID vazio).
+type Gap struct {
+	FieldID     string           // ID do campo no modelo; vazio para gaps de papel
+	Pergunta    string           // texto exibido ao usuário
+	RoleNome    string           // nome do papel de origem (somente para gaps de papel)
+	Obrigatorio bool
+	Tipo        parser.FieldType // text, textarea, select, multiselect, list
+	Opcoes      []string
 }

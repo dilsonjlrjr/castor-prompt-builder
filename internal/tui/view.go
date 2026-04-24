@@ -317,16 +317,18 @@ func (m AppModel) viewModelInfo() string {
 
 // nomeCategoria mapeia o id do diretório para nome de exibição
 var nomeCategoria = map[string]string{
-	"arquitetura": "Arquitetura",
-	"frontend":    "Frontend & Mobile",
-	"backend":     "Backend",
-	"devops":      "DevOps & Cloud",
-	"banco":       "Banco de Dados",
-	"dados":       "Dados & IA",
-	"gestao":      "Gestão",
-	"seguranca":   "Segurança",
-	"design":      "Design",
-	"marketing":   "Marketing",
+	"arquitetura":  "Arquitetura",
+	"frontend":     "Frontend & Mobile",
+	"backend":      "Backend",
+	"devops":       "DevOps & Cloud",
+	"banco":        "Banco de Dados",
+	"dados":        "Dados & IA",
+	"gestao":       "Gestão",
+	"seguranca":    "Segurança",
+	"design":       "Design",
+	"marketing":    "Marketing",
+	"qa":           "QA & Testes",
+	"documentacao": "Documentação",
 }
 
 // --- Selecionar Papel ---
@@ -462,9 +464,17 @@ func (m AppModel) viewNarrative() string {
 func (m AppModel) viewGap() string {
 	total := len(m.gaps)
 	current := m.gapIndex + 1
+	gap := m.gaps[m.gapIndex]
 	var sb strings.Builder
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(fmt.Sprintf("lacuna %d de %d", current, total)) + "\n\n")
-	sb.WriteString(styleSubtitle.Render(m.gaps[m.gapIndex]) + "\n\n")
+	sb.WriteString(styleSubtitle.Render(gap.Pergunta) + "\n")
+	if gap.RoleNome != "" {
+		sb.WriteString(styleMuted.Render("  ↳ papel: "+gap.RoleNome) + "\n")
+	}
+	if gap.Obrigatorio {
+		sb.WriteString(styleMuted.Render("  ★ obrigatório") + "\n")
+	}
+	sb.WriteString("\n")
 	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
 	sb.WriteString(styleHelp.Render("Ctrl+S próximo   Esc voltar   (deixe vazio para pular)"))
 	return sb.String()
