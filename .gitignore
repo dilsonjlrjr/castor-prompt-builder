@@ -9,6 +9,10 @@ prompts/
 # distribuição
 dist/
 
+# claude
+CLAUDE.md
+.claude/
+
 # sistema
 .DS_Store
 **/.DS_Store
