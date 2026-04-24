@@ -794,24 +794,28 @@
     <main class="flex-1 flex flex-col overflow-hidden">
 
       <!-- topbar: voltar + breadcrumb -->
-      {#if screen !== 'model' && screen !== 'result'}
+      {#if screen !== 'model'}
         <div class="flex items-center gap-3 px-8 pt-6 pb-0 flex-shrink-0">
-          <button on:click={goBack}
-            class="flex items-center gap-1.5 text-xs text-[#4a5060]
-                   hover:text-[#f5a623] transition-colors group">
-            <span class="text-base leading-none group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>voltar</span>
+          <button on:click={screen === 'result' ? restart : goBack}
+            class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
+                   border border-[#2a2a42] text-[#8a94a8]
+                   hover:border-[#f5a623]/40 hover:text-[#f5a623] hover:bg-[#f5a623]/5
+                   transition-all group">
+            <span class="text-sm leading-none group-hover:-translate-x-0.5 transition-transform">←</span>
+            <span>{screen === 'result' ? 'Novo prompt' : 'Voltar'}</span>
           </button>
-          <span class="text-[#2a2a40]">/</span>
-          <span class="text-xs text-[#6e7681]">
-            {#if selectedModel}<span class="text-[#f5a623]">{selectedModel.nome}</span>{/if}
-            {#if selectedRoles.size > 0}
-              <span class="text-[#2a2a40] mx-1">›</span>
-              <span class="text-[#c9d1d9]">
-                {[...selectedRoles].map(id => roles.find(r => r.id === id)?.nome).filter(Boolean).join(' + ')}
-              </span>
-            {/if}
-          </span>
+          {#if screen !== 'result'}
+            <span class="text-[#2a2a40]">/</span>
+            <span class="text-xs text-[#6e7681]">
+              {#if selectedModel}<span class="text-[#f5a623]">{selectedModel.nome}</span>{/if}
+              {#if selectedRoles.size > 0}
+                <span class="text-[#2a2a40] mx-1">›</span>
+                <span class="text-[#c9d1d9]">
+                  {[...selectedRoles].map(id => roles.find(r => r.id === id)?.nome).filter(Boolean).join(' + ')}
+                </span>
+              {/if}
+            </span>
+          {/if}
         </div>
       {/if}
 
