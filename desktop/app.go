@@ -13,7 +13,7 @@ import (
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
 )
 
-//go:embed bundled/*.md
+//go:embed bundled
 var bundledFS embed.FS
 
 // userDataDir retorna ~/.castorprompt
@@ -25,9 +25,9 @@ func userDataDir() (string, error) {
 	return filepath.Join(home, ".castorprompt"), nil
 }
 
-// ensureUserDir cria ~/.castorprompt na primeira execução:
+// ensureUserDir cria ~/.castorprompt na primeira execução e extrai:
 //   - models/ com os 4 modelos embutidos
-//   - roles/ vazio (o usuário adiciona os seus)
+//   - roles/ com todos os papéis embutidos (organizados por categoria)
 //
 // Retorna true se o diretório foi criado agora (primeira execução).
 func ensureUserDir() bool {
@@ -39,23 +39,36 @@ func ensureUserDir() bool {
 	if _, err := os.Stat(base); err == nil {
 		return false
 	}
-	modelsDir := filepath.Join(base, "models")
-	rolesDir := filepath.Join(base, "roles")
-	_ = os.MkdirAll(modelsDir, 0o755)
-	_ = os.MkdirAll(rolesDir, 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "models"), 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "roles"), 0o755)
 
-	// escreve os modelos embutidos
+	// extrai modelos embutidos → ~/.castorprompt/models/
 	entries, _ := fs.ReadDir(bundledFS, "bundled")
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
 			continue
 		}
-		data, err := bundledFS.ReadFile("bundled/" + e.Name())
-		if err != nil {
-			continue
-		}
-		_ = os.WriteFile(filepath.Join(modelsDir, e.Name()), data, 0o644)
+		data, _ := bundledFS.ReadFile("bundled/" + e.Name())
+		_ = os.WriteFile(filepath.Join(base, "models", e.Name()), data, 0o644)
 	}
+
+	// extrai roles embutidos → ~/.castorprompt/roles/<categoria>/arquivo.md
+	_ = fs.WalkDir(bundledFS, "bundled/roles", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".md") {
+			return nil
+		}
+		// path = "bundled/roles/arquitetura/arquivo.md"
+		rel := strings.TrimPrefix(path, "bundled/roles/")
+		dest := filepath.Join(base, "roles", rel)
+		_ = os.MkdirAll(filepath.Dir(dest), 0o755)
+		data, _ := bundledFS.ReadFile(path)
+		_ = os.WriteFile(dest, data, 0o644)
+		return nil
+	})
+
 	return true
 }
 
@@ -143,16 +156,15 @@ func (a *App) startup(ctx context.Context) {
 
 	a.firstRun = ensureUserDir()
 
-	modelsDir := findSubdir("models")
-	rolesDir  := findSubdir("roles")
+	base, _ := userDataDir()
 
-	models, err := parser.LoadAllModels(modelsDir)
+	models, err := parser.LoadAllModels(filepath.Join(base, "models"))
 	if err != nil {
 		models = []*parser.Model{}
 	}
 	a.models = models
 
-	roles, err := parser.LoadAllRoles(rolesDir)
+	roles, err := parser.LoadAllRoles(filepath.Join(base, "roles"))
 	if err != nil {
 		roles = []*parser.Role{}
 	}
