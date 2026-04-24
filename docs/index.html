@@ -272,7 +272,8 @@
       transition: border-color .2s, transform .2s;
     }
     .dl-card:hover { border-color: var(--primary); transform: translateY(-2px); text-decoration: none; }
-    .dl-card .os-icon { font-size: 1.8rem; }
+    .dl-card .os-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .dl-card .os-icon img { width: 48px; height: 48px; object-fit: contain; }
     .dl-card .os-name { font-weight: 700; font-size: .9rem; }
     .dl-card .os-arch { color: var(--muted); font-size: .75rem; }
 
@@ -584,17 +585,17 @@
 
       <div class="download-grid">
         <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
-          <div class="os-icon"></div>
+          <div class="os-icon"><img src="apple-icon.png" alt="macOS" /></div>
           <div class="os-name">macOS</div>
           <div class="os-arch">Universal (Apple Silicon + Intel)</div>
         </a>
         <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
-          <div class="os-icon">🪟</div>
+          <div class="os-icon"><img src="windows-icon.png" alt="Windows" /></div>
           <div class="os-name">Windows</div>
           <div class="os-arch">amd64</div>
         </a>
         <a href="https://github.com/dilsonjlrjr/castor-prompt-builder/releases/latest" class="dl-card">
-          <div class="os-icon">🐧</div>
+          <div class="os-icon"><img src="linux-icon.png" alt="Linux" /></div>
           <div class="os-name">Linux</div>
           <div class="os-arch">amd64</div>
         </a>
