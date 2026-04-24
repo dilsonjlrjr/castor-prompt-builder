@@ -94,10 +94,95 @@
 
   function nextSlide() {
     if (onboardSlide < ONBOARD_SLIDES.length - 1) onboardSlide++
-    else showOnboarding = false
+    else { showOnboarding = false; showTutorial = true; tutorialSlide = 0 }
   }
   function prevSlide() {
     if (onboardSlide > 0) onboardSlide--
+  }
+
+  // ---- tutorial de uso ----
+  let showTutorial  = false
+  let tutorialSlide = 0
+
+  const TUTORIAL_SLIDES = [
+    {
+      step:     0,
+      icon:     '🗺️',
+      accent:   '#f5a623',
+      title:    'Como funciona o CASTOR',
+      subtitle: 'Visão geral · 6 etapas',
+      desc:     'O CASTOR guia você por um wizard simples. Cada etapa adiciona uma camada de contexto — no final, um prompt estruturado pronto para qualquer IA.',
+      tip:      'Você pode voltar a etapas anteriores a qualquer momento.',
+      preview:  'pipeline',
+    },
+    {
+      step:     1,
+      icon:     '📐',
+      accent:   '#f5a623',
+      title:    'Escolha o Modelo',
+      subtitle: 'Passo 1 de 6',
+      desc:     'O modelo define a estrutura e a lógica do prompt. Cada um serve um tipo diferente de tarefa — escolha o que melhor se encaixa no seu objetivo.',
+      tip:      'Na dúvida, RACE é o mais versátil para a maioria dos casos.',
+      preview:  'models',
+    },
+    {
+      step:     2,
+      icon:     '🎭',
+      accent:   '#a371f7',
+      title:    'Selecione os Papéis',
+      subtitle: 'Passo 2 de 6',
+      desc:     'O papel define quem a IA deve "ser" para responder sua tarefa. Você pode combinar vários — o prompt incorpora as habilidades de todos.',
+      tip:      'Combinar papéis complementares (ex: Arquiteto + DevOps) enriquece muito o resultado.',
+      preview:  'roles',
+    },
+    {
+      step:     3,
+      icon:     '✍️',
+      accent:   '#58a6ff',
+      title:    'Descreva sua Tarefa',
+      subtitle: 'Passo 3 de 6',
+      desc:     'Escreva naturalmente, como explicaria a um colega. Sem formatação especial — o CASTOR distribui o contexto automaticamente nos campos certos.',
+      tip:      'Quanto mais contexto aqui, menos gaps serão perguntados depois.',
+      preview:  'narrative',
+    },
+    {
+      step:     4,
+      icon:     '💬',
+      accent:   '#3fb950',
+      title:    'Preencha o Contexto',
+      subtitle: 'Passo 4 de 6',
+      desc:     'O CASTOR identifica o que falta e faz perguntas direcionadas. Algumas vêm do modelo, outras dos papéis — e cada pergunta mostra de onde veio.',
+      tip:      'Campos opcionais podem ser pulados — aparecem no prompt como lacunas a considerar.',
+      preview:  'gaps',
+    },
+    {
+      step:     5,
+      icon:     '📋',
+      accent:   '#e06c75',
+      title:    'Defina as Fases',
+      subtitle: 'Passo 5 de 6 · opcional',
+      desc:     'Para tarefas complexas, divida a execução em etapas sequenciais. Cada fase tem um título e uma descrição do que deve acontecer naquele momento.',
+      tip:      'Fases são ótimas para projetos de múltiplas entregas ou raciocínio encadeado.',
+      preview:  'phases',
+    },
+    {
+      step:     6,
+      icon:     '🚀',
+      accent:   '#f5a623',
+      title:    'Prompt Pronto!',
+      subtitle: 'Passo 6 de 6',
+      desc:     'O CASTOR monta o prompt com modelo, papéis, habilidades, contexto e fases — estruturado e pronto para usar em qualquer IA.',
+      tip:      'Copie e cole diretamente no ChatGPT, Claude, Gemini ou qualquer outra IA.',
+      preview:  'result',
+    },
+  ]
+
+  function nextTutorial() {
+    if (tutorialSlide < TUTORIAL_SLIDES.length - 1) tutorialSlide++
+    else showTutorial = false
+  }
+  function prevTutorial() {
+    if (tutorialSlide > 0) tutorialSlide--
   }
 
   const MODEL_TAG_COLOR: Record<string, string> = {
@@ -512,6 +597,313 @@
                      hover:brightness-110 active:scale-[0.97]"
               style="background:{slide.accent}">
               {onboardSlide < ONBOARD_SLIDES.length - 1 ? 'Próximo →' : '🚀 Começar!'}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  {/if}
+
+  <!-- ============================================================
+       TUTORIAL OVERLAY
+  ============================================================= -->
+  {#if showTutorial}
+    {@const ts = TUTORIAL_SLIDES[tutorialSlide]}
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         in:fade={{ duration: 300 }} out:fade={{ duration: 200 }}>
+
+      <div class="absolute inset-0 bg-[#04040a]/85 backdrop-blur-md"></div>
+
+      <div class="relative z-10 w-[640px] rounded-2xl border border-[#1e1e30]
+                  bg-[#0d0d18] shadow-2xl overflow-hidden"
+           in:fly={{ y: 24, duration: 350, easing: cubicOut }}>
+
+        <!-- barra de progresso -->
+        <div class="h-0.5 w-full bg-[#1a1a28]">
+          <div class="h-full transition-all duration-500 rounded-full"
+               style="width:{((tutorialSlide + 1) / TUTORIAL_SLIDES.length) * 100}%;
+                      background:{ts.accent}"></div>
+        </div>
+
+        <!-- header -->
+        <div class="px-8 pt-7 pb-4 flex items-center gap-4">
+          <div class="relative flex-shrink-0">
+            <div class="absolute inset-0 rounded-full blur-xl opacity-40"
+                 style="background:{ts.accent}; transform:scale(2)"></div>
+            <div class="relative text-4xl leading-none select-none"
+                 style="filter:drop-shadow(0 0 16px {ts.accent}99)">
+              {ts.icon}
+            </div>
+          </div>
+          <div>
+            <p class="text-[10px] tracking-[0.2em] uppercase font-semibold mb-0.5"
+               style="color:{ts.accent}">{ts.subtitle}</p>
+            <h2 class="text-xl font-bold text-[#e8eaf0]">{ts.title}</h2>
+          </div>
+          <button on:click={() => showTutorial = false}
+            class="ml-auto text-[#3a3a50] hover:text-[#6e7681] transition-colors text-lg leading-none">✕</button>
+        </div>
+
+        <!-- desc -->
+        <div class="px-8 pb-4">
+          <p class="text-sm text-[#8a94a8] leading-relaxed">{ts.desc}</p>
+        </div>
+
+        <!-- preview área -->
+        <div class="mx-8 mb-4 rounded-xl border border-[#1e1e2e] bg-[#08080f] overflow-hidden">
+
+          <!-- PIPELINE overview -->
+          {#if ts.preview === 'pipeline'}
+            <div class="p-5">
+              <div class="flex items-stretch gap-0">
+                {#each [
+                  { icon:'📐', label:'Modelo',   accent:'#f5a623' },
+                  { icon:'🎭', label:'Papéis',   accent:'#a371f7' },
+                  { icon:'✍️', label:'Tarefa',   accent:'#58a6ff' },
+                  { icon:'💬', label:'Contexto', accent:'#3fb950' },
+                  { icon:'📋', label:'Fases',    accent:'#e06c75' },
+                  { icon:'🚀', label:'Prompt',   accent:'#f5a623' },
+                ] as s, si}
+                  <div class="flex-1 flex flex-col items-center gap-1.5 relative">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl
+                                border border-[#1e1e2e]"
+                         style="background:{s.accent}12; border-color:{s.accent}25">
+                      {s.icon}
+                    </div>
+                    <span class="text-[10px] font-semibold" style="color:{s.accent}">{s.label}</span>
+                    {#if si < 5}
+                      <div class="absolute top-5 left-[calc(50%+20px)] right-0 h-px"
+                           style="background:linear-gradient(90deg,{s.accent}40,transparent)"></div>
+                    {/if}
+                  </div>
+                {/each}
+              </div>
+              <div class="mt-4 pt-3 border-t border-[#1a1a28] grid grid-cols-3 gap-2">
+                {#each [
+                  { label:'Estrutura clara', desc:'O modelo organiza as seções do prompt' },
+                  { label:'Especialistas', desc:'Os papéis definem o estilo e contexto' },
+                  { label:'Sem IA no processo', desc:'Tudo é template engine e heurística' },
+                ] as feat}
+                  <div class="rounded-lg p-2.5 bg-[#0d0d18] border border-[#1e1e2e]">
+                    <p class="text-[10px] font-bold text-[#c9d1d9] mb-0.5">{feat.label}</p>
+                    <p class="text-[9px] text-[#4a5060] leading-snug">{feat.desc}</p>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+          <!-- MODELS preview -->
+          {:else if ts.preview === 'models'}
+            <div class="p-4 flex flex-col gap-2">
+              {#each [
+                { id:'RACE',   color:'#f5a623', desc:'Contexto rico + entregável claro',    tag:'Mais usado'   },
+                { id:'RTF',    color:'#3fb950', desc:'Tarefas diretas e objetivas',          tag:''             },
+                { id:'RISEN',  color:'#a371f7', desc:'Steps detalhados com restrições',      tag:'Complexo'     },
+                { id:'CREATE', color:'#58a6ff', desc:'Conteúdo criativo com público e tom',  tag:'Criativo'     },
+              ] as m, mi}
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all
+                            {mi === 0
+                              ? 'border-[#f5a623]/40 bg-[#f5a623]/5'
+                              : 'border-[#1e1e2e] bg-transparent opacity-60'}">
+                  <div class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                       style="background:{m.color}; {mi !== 0 ? 'opacity:0.4' : ''}"></div>
+                  <span class="text-xs font-bold w-14 flex-shrink-0" style="color:{m.color}">{m.id}</span>
+                  <span class="text-xs text-[#6e7681] flex-1">{m.desc}</span>
+                  {#if m.tag}
+                    <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
+                          style="background:{m.color}18; color:{m.color}">{m.tag}</span>
+                  {/if}
+                  {#if mi === 0}
+                    <span class="text-[#f5a623] text-xs">✓</span>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+
+          <!-- ROLES preview -->
+          {:else if ts.preview === 'roles'}
+            <div class="p-4">
+              <div class="flex gap-2 mb-3 flex-wrap">
+                {#each [
+                  { nome:'Arquiteto Cloud', color:'#a371f7', sel: true  },
+                  { nome:'DevOps Engineer', color:'#a371f7', sel: true  },
+                  { nome:'QA Lead',         color:'#a371f7', sel: false },
+                ] as r}
+                  <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold
+                              {r.sel
+                                ? 'border-[#a371f7]/40 bg-[#a371f7]/10 text-[#a371f7]'
+                                : 'border-[#2a2a42] text-[#4a5060]'}">
+                    {#if r.sel}<span>✓</span>{:else}<span>+</span>{/if}
+                    {r.nome}
+                  </div>
+                {/each}
+              </div>
+              <div class="border-t border-[#1a1a28] pt-3">
+                <p class="text-[9px] uppercase tracking-widest text-[#3a3a50] mb-2">🏗️ Arquitetura</p>
+                <div class="grid grid-cols-2 gap-1.5">
+                  {#each ['Arquiteto Cloud ✓','Arquiteto de Software ✓','Arquiteto de Soluções','Arquiteto de Microsserviços'] as r}
+                    <div class="text-[10px] px-2 py-1 rounded border
+                                {r.includes('✓')
+                                  ? 'border-[#a371f7]/30 bg-[#a371f7]/8 text-[#a371f7]'
+                                  : 'border-[#1e1e2e] text-[#4a5060]'}">
+                      {r}
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            </div>
+
+          <!-- NARRATIVE preview -->
+          {:else if ts.preview === 'narrative'}
+            <div class="p-4">
+              <div class="rounded-lg border border-[#2a2a42] bg-[#0d0d18] p-3 font-mono text-xs
+                          text-[#8a94a8] leading-relaxed mb-3">
+                <span class="text-[#58a6ff]">Preciso criar uma API de pagamentos</span> para o nosso
+                e-commerce. Usamos Go e PostgreSQL, com pico de <span class="text-[#3fb950]">10k req/s</span>
+                em datas comemorativas. O sistema precisa integrar com o gateway da Stripe e suportar
+                <span class="text-[#f5a623]">Pix, cartão e boleto</span>. A equipe tem 4 devs sênior.
+                <span class="text-[#4a5060] animate-pulse">█</span>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                {#each [
+                  { label:'Stack detectada', val:'Go + PostgreSQL', c:'#58a6ff' },
+                  { label:'Carga', val:'10k req/s', c:'#3fb950' },
+                  { label:'Integrações', val:'Stripe, Pix', c:'#f5a623' },
+                ] as hint}
+                  <div class="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border"
+                       style="border-color:{hint.c}25; background:{hint.c}10; color:{hint.c}">
+                    <span class="opacity-60">{hint.label}:</span>
+                    <span class="font-bold">{hint.val}</span>
+                  </div>
+                {/each}
+              </div>
+            </div>
+
+          <!-- GAPS preview -->
+          {:else if ts.preview === 'gaps'}
+            <div class="p-4 flex flex-col gap-3">
+              <div class="rounded-lg border border-[#3fb950]/25 bg-[#3fb950]/5 p-3">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <p class="text-xs text-[#c9d1d9] font-medium leading-snug">
+                    Comunicação síncrona (REST/gRPC) ou assíncrona (Kafka/NATS)?
+                  </p>
+                  <span class="text-[#3fb950] text-base flex-shrink-0">?</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[9px] px-2 py-0.5 rounded-full border font-semibold
+                               bg-[#a371f7]/12 text-[#a371f7] border-[#a371f7]/20">
+                    🎭 Arquiteto Cloud
+                  </span>
+                </div>
+              </div>
+              <div class="rounded-lg border border-[#1e1e2e] bg-[#0d0d18] px-3 py-2 text-xs
+                          text-[#4a5060] font-mono">
+                REST síncrono para pagamentos, Kafka para eventos de confirmação...
+                <span class="text-[#3fb950] animate-pulse">█</span>
+              </div>
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="text-[#3a3a50]">Pergunta 3 de 8</span>
+                <span class="text-[#3fb950]">▓▓▓░░░░░ 37%</span>
+              </div>
+            </div>
+
+          <!-- PHASES preview -->
+          {:else if ts.preview === 'phases'}
+            <div class="p-4 flex flex-col gap-2">
+              {#each [
+                { n:1, title:'Diagnóstico e Análise', desc:'Avalie os requisitos de throughput, modelagem do banco e pontos de integração com o gateway.', done: true  },
+                { n:2, title:'Implementação do Core', desc:'Construa os endpoints principais de criação e consulta de transações com idempotência.', done: false },
+                { n:3, title:'Integrações e Testes',  desc:'Conecte Stripe, Pix e boleto. Cobertura de testes de contrato e carga.', done: false },
+              ] as ph}
+                <div class="flex gap-3 rounded-lg border p-3
+                            {ph.done
+                              ? 'border-[#e06c75]/30 bg-[#e06c75]/5'
+                              : 'border-[#1e1e2e] opacity-50'}">
+                  <div class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]
+                               font-bold flex-shrink-0 mt-0.5"
+                       style="background:{ph.done ? '#e06c75' : '#1e1e2e'}; color:{ph.done ? '#fff' : '#3a3a50'}">
+                    {ph.n}
+                  </div>
+                  <div>
+                    <p class="text-xs font-bold text-[#c9d1d9] mb-0.5">{ph.title}</p>
+                    <p class="text-[10px] text-[#4a5060] leading-snug">{ph.desc}</p>
+                  </div>
+                </div>
+              {/each}
+            </div>
+
+          <!-- RESULT preview -->
+          {:else if ts.preview === 'result'}
+            <div class="p-4">
+              <div class="rounded-lg border border-[#1e1e2e] bg-[#0d0d18] p-3 font-mono text-[10px]
+                          text-[#6e7681] leading-relaxed max-h-40 overflow-hidden relative">
+                <div class="text-[#f5a623] font-bold mb-1"># Prompt — Arquiteto Cloud</div>
+                <div class="text-[#3fb950] mb-1">## Papel</div>
+                <div class="mb-2">Você é um Arquiteto Cloud sênior. Especialista em sistemas de
+                alta disponibilidade, multi-region e otimização de custos em AWS/GCP/Azure...</div>
+                <div class="text-[#3fb950] mb-1">## Contexto</div>
+                <div class="mb-2">API de pagamentos Go + PostgreSQL. Pico 10k req/s. Integração
+                Stripe, Pix e boleto. Time de 4 devs sênior...</div>
+                <div class="text-[#a371f7] mb-1">## Habilidades relevantes</div>
+                <div>- AWS / GCP / Azure&#10;- Infraestrutura como código&#10;- Kubernetes...</div>
+                <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-[#0d0d18]"></div>
+              </div>
+              <div class="flex justify-end mt-3">
+                <div class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold
+                            bg-[#f5a623] text-black cursor-default">
+                  📋 Copiar prompt
+                </div>
+              </div>
+            </div>
+          {/if}
+
+        </div>
+
+        <!-- dica -->
+        <div class="mx-8 mb-5 flex items-start gap-2.5 px-3 py-2.5 rounded-lg
+                    bg-[#f5a623]/6 border border-[#f5a623]/15">
+          <span class="text-sm flex-shrink-0">💡</span>
+          <p class="text-[11px] text-[#8a94a8] leading-relaxed">{ts.tip}</p>
+        </div>
+
+        <!-- footer -->
+        <div class="flex items-center justify-between px-8 py-5 border-t border-[#1a1a28]">
+
+          <!-- dots -->
+          <div class="flex gap-1.5">
+            {#each TUTORIAL_SLIDES as _, i}
+              <button on:click={() => tutorialSlide = i}
+                class="rounded-full transition-all duration-300"
+                style="width:{i === tutorialSlide ? '20px' : '6px'};
+                       height:6px;
+                       background:{i === tutorialSlide ? ts.accent : '#2a2a42'}">
+              </button>
+            {/each}
+          </div>
+
+          <!-- nav -->
+          <div class="flex items-center gap-3">
+            {#if tutorialSlide > 0}
+              <button on:click={prevTutorial}
+                class="px-4 py-2 rounded-lg text-xs text-[#4a5060]
+                       hover:text-[#c9d1d9] transition-colors border border-transparent
+                       hover:border-[#2a2a42]">
+                ← Anterior
+              </button>
+            {:else}
+              <button on:click={() => showTutorial = false}
+                class="px-4 py-2 rounded-lg text-xs text-[#3a3a50]
+                       hover:text-[#6e7681] transition-colors">
+                Pular tutorial
+              </button>
+            {/if}
+
+            <button on:click={nextTutorial}
+              class="px-5 py-2 rounded-lg text-sm font-bold text-black transition-all
+                     hover:brightness-110 active:scale-[0.97]"
+              style="background:{ts.accent}">
+              {tutorialSlide < TUTORIAL_SLIDES.length - 1 ? 'Próximo →' : '🚀 Começar a criar!'}
             </button>
           </div>
         </div>
