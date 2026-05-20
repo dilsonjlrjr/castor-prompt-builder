@@ -13,7 +13,9 @@
   type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result'
 
   // Gap unificado: campo do modelo (tem fieldId) ou gap de papel (fieldId = '')
-  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean; roleNome?: string }
+  type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean; roleNome?: string; answer: string }
+  // ContextSection agrupa gaps — do modelo ou de um papel
+  type ContextSection = { title: string; kind: string; gaps: Gap[] }
   type FileStatus = { arquivo: string; tipo: string; ok: boolean; problema?: string }
 
   // ---- estado ----
@@ -25,10 +27,12 @@
   let selectedRoles: Set<string>  = new Set()
   let roleSearch = ''
 
-  let narrative   = ''
-  let gaps: Gap[] = []
-  let gapIndex    = 0
-  let gapAnswers: string[] = []
+  let narrative = ''
+  let contextSections: ContextSection[] = []
+  let contextSecIdx   = 0
+  let contextCursor   = 0
+  let contextEditing  = false
+  let roleFilter      = -1  // -1=todos, 0+=indice do papel
 
   let usePhases = false
   let phases: Step[] = []
@@ -220,8 +224,8 @@
   function goBack() {
     if (screen === 'role')      { screen = 'model';     return }
     if (screen === 'narrative') { screen = 'role';      return }
-    if (screen === 'gap')       { prevGap();            return }
-    if (screen === 'phase')     { screen = gaps.length > 0 ? 'gap' : 'narrative'; gapIndex = gaps.length - 1; return }
+    if (screen === 'gap')       { screen = 'narrative'; return }
+    if (screen === 'phase')     { screen = contextSections.length > 0 ? 'gap' : 'narrative'; return }
   }
 
   function toggleRole(id: string) {
@@ -246,61 +250,161 @@
   function confirmNarrative() {
     if (!narrative.trim()) return
 
-    // 1) Campos obrigatórios do modelo que não são mapeados automaticamente
+    const sections: ContextSection[] = []
+
+    // 1. Todos os campos do modelo (obrigatorios + opcionais) em uma secao
     const modelGaps: Gap[] = (selectedModel?.campos ?? []).map(c => ({
       fieldId:  c.id,
       pergunta:   c.label,
       tipo:       c.tipo,
       opcoes:     c.opcoes ?? [],
       obrigatorio: c.obrigatorio,
+      answer:      '',
     }))
-
-    // 2) Gaps de papel — com atribuição de papel e dedup entre roles
-    const seenQ = new Set(modelGaps.map(g => g.pergunta))
-    const roleGaps: Gap[] = []
-    for (const id of selectedRoles) {
-      const role = roles.find(r => r.id === id)
-      if (!role) continue
-      for (const q of role.gaps_comuns ?? []) {
-        if (!seenQ.has(q)) {
-          seenQ.add(q)
-          roleGaps.push({ fieldId: '', pergunta: q, tipo: 'textarea', opcoes: [], obrigatorio: false, roleNome: role.nome })
-        }
-      }
+    // obrigatorios primeiro
+    modelGaps.sort((a, b) => (b.obrigatorio ? 1 : 0) - (a.obrigatorio ? 1 : 0))
+    if (modelGaps.length > 0) {
+      sections.push({ title: 'Contexto do Modelo (' + (selectedModel?.nome ?? '') + ')', kind: 'model', gaps: modelGaps })
     }
 
-    gaps      = [...modelGaps, ...roleGaps]
-    gapIndex  = 0
-    gapAnswers = Array(gaps.length).fill('')
-    screen = gaps.length > 0 ? 'gap' : 'phase'
+    // 2. Gaps de papel — uma seção por papel
+    for (const id of selectedRoles) {
+      const role = roles.find(r => r.id === id)
+      if (!role || !role.gaps_comuns?.length) continue
+      const roleGaps: Gap[] = role.gaps_comuns.map(q => ({
+        fieldId:  '',
+        pergunta:   q,
+        tipo:       'textarea',
+        opcoes:     [],
+        obrigatorio: false,
+        roleNome:   role.nome,
+        answer:     '',
+      }))
+      sections.push({ title: role.nome, kind: 'role', gaps: roleGaps })
+    }
+
+    contextSections = sections
+    contextSecIdx   = 0
+    contextCursor   = 0
+    contextEditing  = false
+    roleFilter      = -1
+    screen = sections.length > 0 ? 'gap' : 'phase'
   }
 
   let gapError = false
+  let roleSections: ContextSection[] = []
+  let visibleSections: ContextSection[] = []
 
-  function nextGap() {
-    const current = gaps[gapIndex]
-    if (current.obrigatorio && !gapAnswers[gapIndex]?.trim()) {
+  $: roleSections = contextSections.filter(s => s.kind === 'role')
+
+  $: visibleSections = roleFilter < 0
+    ? contextSections
+    : contextSections.filter(s => s.kind === 'model' || s.title === (roleSections[roleFilter]?.title ?? ''))
+
+  function cycleSelectOption(gap: Gap) {
+    const idx = gap.opcoes.indexOf(gap.answer)
+    gap.answer = gap.opcoes[(idx + 1) % gap.opcoes.length]
+  }
+
+  function toggleMultiOption(gap: Gap, opt: string) {
+    const parts = gap.answer ? gap.answer.split(', ').filter(p => p) : []
+    const found = parts.indexOf(opt)
+    if (found >= 0) parts.splice(found, 1)
+    else parts.push(opt)
+    gap.answer = parts.join(', ')
+  }
+
+  function hasOpt(gap: Gap, opt: string): boolean {
+    return (gap.answer ?? '').split(', ').includes(opt)
+  }
+
+  function formatAnswer(g: Gap): string {
+    if (!g.answer) return '(vazio)'
+    if (g.tipo === 'select' || g.tipo === 'multiselect') return '[' + g.answer + ']'
+    return g.answer.length > 30 ? g.answer.slice(0, 30) + '...' : g.answer
+  }
+
+  function currentGap(): Gap | null {
+    const vis = visibleSections
+    if (contextSecIdx >= vis.length) return null
+    const sec = vis[contextSecIdx]
+    if (contextCursor >= sec.gaps.length) return null
+    return sec.gaps[contextCursor]
+  }
+
+  function totalGaps(): number {
+    let n = 0
+    for (const s of visibleSections) n += s.gaps.length
+    return n
+  }
+
+  function gapGlobalIndex(): number {
+    let n = 0
+    for (let i = 0; i < contextSecIdx; i++) n += visibleSections[i].gaps.length
+    return n + contextCursor
+  }
+
+  $: editingGap = contextEditing ? currentGap() : null
+
+  function filterRole(idx: number) {
+    roleFilter = idx
+    contextSecIdx = 0
+    contextCursor = 0
+    contextEditing = false
+  }
+
+  function startEdit(gap: Gap) {
+    contextEditing = true
+    gapError = false
+  }
+
+  function saveEdit() {
+    contextEditing = false
+    gapError = false
+  }
+
+  function nextContextGap() {
+    const cur = currentGap()
+    if (cur?.obrigatorio && !cur.answer.trim()) {
       gapError = true
       return
     }
     gapError = false
-    gapIndex++
-    if (gapIndex >= gaps.length) screen = 'phase'
+    const vis = visibleSections
+    const sec = vis[contextSecIdx]
+    if (sec && contextCursor < sec.gaps.length - 1) {
+      contextCursor++
+      return
+    }
+    if (contextSecIdx < vis.length - 1) {
+      contextSecIdx++
+      contextCursor = 0
+      return
+    }
+    screen = 'phase'
   }
 
-  function prevGap() {
-    gapError = false
-    if (gapIndex > 0) { gapIndex--; return }
-    screen = 'narrative'
+  function hasNextGap(): boolean {
+    const vis = visibleSections
+    if (contextSecIdx >= vis.length) return false
+    const sec = vis[contextSecIdx]
+    if (sec && contextCursor < sec.gaps.length - 1) return true
+    return contextSecIdx < vis.length - 1
   }
 
   async function build() {
     building = true
+    const allGapAnswers = contextSections.flatMap(s => s.gaps.map(g => ({
+      field_id: g.fieldId,
+      pergunta: g.pergunta,
+      resposta: g.answer,
+      role_nome: g.roleNome ?? '',
+    })))
     const result = await BuildPrompt(main.BuildRequestDTO.createFrom({
       model_id:    selectedModel!.id,
       role_ids:    [...selectedRoles],
       narrativa:   narrative,
-      gap_answers: gaps.map((g, i) => ({ field_id: g.fieldId, pergunta: g.pergunta, resposta: gapAnswers[i] ?? '', role_nome: g.roleNome ?? '' })),
+      gap_answers: allGapAnswers,
       steps:       usePhases ? phases : [],
     }))
     resultContent = result.conteudo
@@ -317,17 +421,20 @@
   }
 
   function restart() {
-    selectedModel = null
-    selectedRoles = new Set()
-    narrative     = ''
-    gaps          = []
-    gapAnswers    = []
-    phases        = []
-    usePhases     = false
-    resultContent = ''
-    resultPath    = '' as string
-    resultError   = ''
-    screen        = 'model'
+    selectedModel    = null
+    selectedRoles    = new Set()
+    narrative        = ''
+    contextSections  = []
+    contextSecIdx    = 0
+    contextCursor    = 0
+    contextEditing   = false
+    roleFilter       = -1
+    phases           = []
+    usePhases        = false
+    resultContent    = ''
+    resultPath       = '' as string
+    resultError      = ''
+    screen           = 'model'
   }
 </script>
 
@@ -953,109 +1060,170 @@
           </div>
 
         <!-- ============================================================
-             TELA 4 — GAPS
+             TELA 4 — GAPS (contexto estruturado)
         ============================================================= -->
         {:else if screen === 'gap'}
           <div in:fly={{ y: 16, duration: 200 }}>
-            <!-- progress bar -->
-            <div class="flex items-center gap-3 mb-6">
-              <div class="flex-1 h-1 rounded-full bg-[#1a1a28] overflow-hidden">
-                <div class="h-full bg-[#f5a623] rounded-full transition-all duration-500"
-                     style="width: {((gapIndex + 1) / gaps.length) * 100}%"></div>
-              </div>
-              <span class="text-xs text-[#6e7681] flex-shrink-0">
-                {gapIndex + 1} / {gaps.length}
-              </span>
-            </div>
-
-            <div class="flex items-start justify-between mb-1">
-              <h2 class="text-lg font-bold">Contexto adicional</h2>
-              {#if gaps[gapIndex].obrigatorio}
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#f85149]/15
-                             text-[#f85149] border border-[#f85149]/30 flex-shrink-0">
-                  obrigatório
-                </span>
-              {:else}
-                <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#1a1a28]
-                             text-[#4a5060] border border-[#2a2a40] flex-shrink-0">
-                  opcional
-                </span>
-              {/if}
-            </div>
+            <h2 class="text-lg font-bold mb-1">Contexto adicional</h2>
             <p class="text-sm text-[#6e7681] mb-5">
-              {gaps[gapIndex].obrigatorio
-                ? 'Este campo é necessário para gerar o prompt corretamente.'
-                : 'Preencha se souber — lacunas opcionais podem ser deixadas em branco.'}
+              Preencha as lacunas — campos obrigatórios são marcados com ★.
             </p>
 
-            <!-- pergunta com destaque -->
-            <div class="p-4 rounded-xl mb-4 border
-                        {gapError
-                          ? 'border-[#f85149]/40 bg-[#f85149]/5'
-                          : 'border-[#f5a623]/20 bg-[#f5a623]/5'}">
-              <div class="flex items-start justify-between gap-3">
-                <p class="text-sm text-[#e0e6f0] leading-relaxed font-medium">
-                  {gaps[gapIndex].pergunta}
-                </p>
-                <span class="text-lg flex-shrink-0 {gapError ? 'text-[#f85149]' : 'text-[#f5a623]'}">?</span>
-              </div>
-              {#if gaps[gapIndex].roleNome}
-                <div class="mt-2 flex items-center gap-1.5">
-                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-[#a371f7]/15 text-[#a371f7] font-semibold tracking-wide border border-[#a371f7]/20">
-                    🎭 {gaps[gapIndex].roleNome}
-                  </span>
-                </div>
-              {/if}
-            </div>
-
-            <!-- select: botões de opção -->
-            {#if gaps[gapIndex].tipo === 'select' && gaps[gapIndex].opcoes.length > 0}
-              <div class="flex flex-wrap gap-2 mb-4">
-                {#each gaps[gapIndex].opcoes as opt}
-                  <button
-                    on:click={() => { gapAnswers[gapIndex] = opt; gapError = false }}
-                    class="px-4 py-1.5 rounded-lg border text-sm transition-all
-                           {gapAnswers[gapIndex] === opt
-                             ? 'border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]'
-                             : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40'}">
-                    {opt}
+            <!-- role filter pills -->
+            {#if roleSections.length > 0}
+              <div class="flex items-center gap-2 mb-4 flex-wrap">
+                <span class="text-[10px] text-[#4a5060] tracking-wider uppercase">Papéis:</span>
+                <button on:click={() => filterRole(-1)}
+                  class="px-3 py-1 rounded-full text-[10px] font-semibold transition-all
+                         {roleFilter < 0
+                           ? 'bg-[#f5a623] text-black'
+                           : 'bg-[#1a1a28] text-[#6e7681] hover:bg-[#2a2a42]'}">
+                  Todos
+                </button>
+                {#each roleSections as rs, ri}
+                  <button on:click={() => filterRole(ri)}
+                    class="px-3 py-1 rounded-full text-[10px] font-semibold transition-all
+                           {roleFilter === ri
+                             ? 'bg-[#f5a623] text-black'
+                             : 'bg-[#1a1a28] text-[#6e7681] hover:bg-[#2a2a42]'}">
+                    {rs.title.length > 20 ? rs.title.slice(0,20) + '...' : rs.title}
                   </button>
                 {/each}
               </div>
             {/if}
 
-            <!-- textarea para text / textarea / list / role gaps -->
-            {#if gaps[gapIndex].tipo !== 'select'}
-              <textarea
-                bind:value={gapAnswers[gapIndex]}
-                on:input={() => gapError = false}
-                placeholder={
-                  (gaps[gapIndex].tipo === 'list' || gaps[gapIndex].tipo === 'multiselect')
-                    ? 'Um item por linha:\nBlog\nLinkedIn\nInstagram'
-                    : gaps[gapIndex].obrigatorio
-                      ? 'Campo obrigatório — preencha para continuar'
-                      : 'Digite sua resposta... (deixe vazio para pular)'
-                }
-                rows="5"
-                class="w-full px-4 py-3 rounded-xl border text-sm
-                       bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50]
-                       resize-none focus:outline-none transition-colors leading-relaxed
-                       {gapError
-                         ? 'border-[#f85149]/60 focus:border-[#f85149]'
-                         : 'border-[#1a1a28] focus:border-[#f5a623]/60'}" />
+            {#if contextEditing && editingGap}
+              <div class="p-4 rounded-xl mb-4 border border-[#f5a623]/20 bg-[#f5a623]/5">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <p class="text-sm text-[#e0e6f0] font-medium">
+                    {editingGap.obrigatorio ? '★ ' : ''}{editingGap.pergunta}
+                    {#if editingGap.roleNome}
+                      <span class="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[#a371f7]/15 text-[#a371f7] border border-[#a371f7]/20">
+                        {editingGap.roleNome}
+                      </span>
+                    {/if}
+                  </p>
+                </div>
+
+                {#if editingGap.tipo === 'select' && editingGap.opcoes.length > 0}
+                  <div class="flex flex-wrap gap-2 mb-3">
+                    {#each editingGap.opcoes as opt}
+                      <button
+                        on:click={() => { editingGap.answer = opt; gapError = false }}
+                        class="px-4 py-1.5 rounded-lg border text-sm transition-all
+                               {editingGap.answer === opt
+                                 ? 'border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]'
+                                 : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40'}">
+                        {opt}
+                      </button>
+                    {/each}
+                  </div>
+                {:else if editingGap.tipo === 'multiselect' && editingGap.opcoes.length > 0}
+                  <div class="flex flex-wrap gap-2 mb-3">
+                    {#each editingGap.opcoes as opt}
+                      <button
+                        on:click={() => toggleMultiOption(editingGap, opt)}
+                        class="px-4 py-1.5 rounded-lg border text-sm transition-all
+                               {hasOpt(editingGap, opt)
+                                 ? 'border-[#f5a623] bg-[#f5a623]/15 text-[#f5a623]'
+                                 : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40'}">
+                        {hasOpt(editingGap, opt) ? '✓ ' : ''}{opt}
+                      </button>
+                    {/each}
+                  </div>
+                {:else}
+                  <textarea
+                    bind:value={editingGap.answer}
+                    on:input={() => gapError = false}
+                    placeholder={editingGap.obrigatorio ? 'Campo obrigatório' : 'Digite sua resposta...'}
+                    rows="4"
+                    class="w-full px-4 py-3 rounded-lg border text-sm
+                           bg-[#0a0a12] text-[#c9d1d9] placeholder-[#3a3a50]
+                           resize-none focus:outline-none transition-colors
+                           {gapError
+                             ? 'border-[#f85149]/60'
+                             : 'border-[#1a1a28] focus:border-[#f5a623]/60'}" />
+                {/if}
+
+                {#if gapError}
+                  <p class="text-xs text-[#f85149] mt-2">⚠ Este campo é obrigatório.</p>
+                {/if}
+
+                <div class="flex gap-2 mt-3">
+                  <button on:click={saveEdit}
+                    class="px-4 py-1.5 rounded-lg bg-[#f5a623] text-black font-bold text-xs
+                           hover:bg-[#e09010] transition-all">
+                    OK
+                  </button>
+                  <button on:click={() => { contextEditing = false; gapError = false }}
+                    class="px-4 py-1.5 rounded-lg border border-[#2a2a42] text-[#6e7681] text-xs
+                           hover:border-[#f5a623]/40 transition-all">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <!-- navegação entre seções -->
+              <div class="flex items-center gap-2 mb-4">
+                {#if contextSecIdx > 0}
+                  <button on:click={() => { contextSecIdx--; contextCursor = 0 }}
+                    class="px-3 py-1 rounded-lg border border-[#1a1a28] text-[#6e7681] text-xs
+                           hover:border-[#f5a623]/40 transition-all">
+                    ← Anterior
+                  </button>
+                {/if}
+                <span class="text-[10px] font-semibold tracking-widest uppercase text-[#f5a623]">
+                  ── {visibleSections[contextSecIdx]?.title ?? ''}
+                </span>
+                {#if contextSecIdx < visibleSections.length - 1}
+                  <button on:click={() => { contextSecIdx++; contextCursor = 0 }}
+                    class="px-3 py-1 rounded-lg border border-[#1a1a28] text-[#6e7681] text-xs
+                           hover:border-[#f5a623]/40 transition-all">
+                    Próxima →
+                  </button>
+                {/if}
+                <span class="text-[10px] text-[#4a5060] ml-auto">
+                  {gapGlobalIndex() + 1} / {totalGaps()}
+                </span>
+              </div>
+
+              <!-- lista de gaps da seção atual -->
+              {#if visibleSections[contextSecIdx]}
+                <div class="flex flex-col gap-1">
+                  {#each visibleSections[contextSecIdx].gaps as g, gi}
+                    <button
+                      on:click={() => { contextCursor = gi; startEdit(g) }}
+                      class="w-full text-left px-3 py-2 rounded-lg border transition-all text-sm
+                             {gi === contextCursor
+                               ? 'border-[#f5a623]/40 bg-[#f5a623]/8 text-[#f5a623]'
+                               : 'border-[#1a1a28] text-[#c9d1d9] hover:border-[#2a2a42]'}">
+                      <div class="flex items-center justify-between">
+                        <span>
+                          {#if g.obrigatorio}<span class="text-[#f85149]">★ </span>{/if}
+                          {g.pergunta}
+                          {#if g.roleNome}
+                            <span class="ml-2 text-[10px] text-[#a371f7]">({g.roleNome})</span>
+                          {/if}
+                        </span>
+                        <span class="text-[10px] text-[#4a5060]">
+                          {formatAnswer(g)}
+                        </span>
+                      </div>
+                    </button>
+                  {/each}
+                </div>
+              {/if}
             {/if}
 
-            {#if gapError}
-              <p class="text-xs text-[#f85149] mt-2">⚠ Este campo é obrigatório para continuar.</p>
+            {#if !contextEditing}
+              <div class="flex justify-end mt-4">
+                <button on:click={nextContextGap}
+                  class="px-6 py-2 rounded-xl bg-[#f5a623] text-black font-bold text-sm
+                         hover:bg-[#e09010] transition-all active:scale-[0.98]">
+                  {hasNextGap() ? 'Próxima lacuna →' : 'Continuar →'}
+                </button>
+              </div>
             {/if}
-
-            <div class="flex justify-end mt-4">
-              <button on:click={nextGap}
-                class="px-6 py-2.5 rounded-xl bg-[#f5a623] text-black font-bold text-sm
-                       hover:bg-[#e09010] transition-all active:scale-[0.98]">
-                {gapIndex < gaps.length - 1 ? 'Próxima →' : 'Continuar →'}
-              </button>
-            </div>
           </div>
 
         <!-- ============================================================

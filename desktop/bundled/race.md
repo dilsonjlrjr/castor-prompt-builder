@@ -54,6 +54,11 @@ campos:
     label: Expectativa
     tipo: textarea
     obrigatorio: true
+
+  - id: premissas
+    label: Premissas e condições
+    tipo: list
+    obrigatorio: false
 ---
 
 ## Template de saída
@@ -75,6 +80,12 @@ Adote um tom {{tom}}.
 
 {{#if canais}}
 Considere os seguintes canais: {{#each canais}}{{.}}{{/each}}.
+{{/if}}
+
+{{#if premissas}}
+## Premissas
+{{#each premissas}}- {{.}}
+{{/each}}
 {{/if}}
 
 Espera-se que {{expectation}}

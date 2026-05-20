@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.textArea.SetWidth(msg.Width - 6)
-		// textarea height: efectiveHeight − cabeçalho(4) − rodapé(2) − margens(4)
 		taH := msg.Height - 10
 		if taH < 4 {
 			taH = 4
@@ -35,8 +35,8 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSelectRole(msg)
 		case screenNarrative:
 			return m.updateNarrative(msg)
-		case screenGap:
-			return m.updateGap(msg)
+		case screenContext:
+			return m.updateContext(msg)
 		case screenAskPhase:
 			return m.updateAskPhase(msg)
 		case screenDefinePhase:
@@ -47,8 +47,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-
-// --- Select Model ---
 
 func (m AppModel) updateSelectModel(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -102,8 +100,6 @@ func (m AppModel) updateModelInfo(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-
-// --- Select Role (multi-select + busca) ---
 
 func (m AppModel) filteredRoleIndices() []int {
 	if m.roleSearch == "" {
@@ -164,7 +160,6 @@ func (m AppModel) updateSelectRole(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// demais teclas → busca
 	var cmd tea.Cmd
 	m.textInput, cmd = m.textInput.Update(msg)
 	newSearch := m.textInput.Value()
@@ -174,8 +169,6 @@ func (m AppModel) updateSelectRole(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, cmd
 }
-
-// --- Narrative ---
 
 func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -190,59 +183,76 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// campos mapeados automaticamente — não viram gaps
 		autoMapped := map[string]bool{
 			"role": true, "action": true, "context": true,
 			"task": true, "input": true,
 		}
 
-		var newGaps []Gap
-		seenQ := map[string]bool{}
-
-		// 1. Campos do modelo (exceto auto-mapeados e steps)
+		var sections []ContextSection
 		model := m.models[m.selectedModel]
+
+		// 1. Todos os campos do modelo (obrigatorios + opcionais) em uma secao
+		var modelGaps []*ContextGap
 		for _, c := range model.Campos {
 			if autoMapped[c.ID] || c.Tipo == parser.FieldSteps {
 				continue
 			}
-			newGaps = append(newGaps, Gap{
+			modelGaps = append(modelGaps, &ContextGap{
 				FieldID:     c.ID,
 				Pergunta:    c.Label,
 				Obrigatorio: c.Obrigatorio,
 				Tipo:        c.Tipo,
 				Opcoes:      c.Opcoes,
 			})
-			seenQ[c.Label] = true
+		}
+		// obrigatorios primeiro
+		sort.SliceStable(modelGaps, func(i, j int) bool {
+			return modelGaps[i].Obrigatorio && !modelGaps[j].Obrigatorio
+		})
+		if len(modelGaps) > 0 {
+			sections = append(sections, ContextSection{
+				Title: "Contexto do Modelo (" + model.Nome + ")",
+				Kind:  "model",
+				Gaps:  modelGaps,
+			})
 		}
 
-		// 2. gaps_comuns dos papéis selecionados (dedup entre papéis)
+		// 2. gaps_comuns dos papeis selecionados — agrupados por papel
 		for idx, sel := range m.selectedRoles {
 			if !sel {
 				continue
 			}
 			r := m.roles[idx]
-			for _, q := range r.GapsComuns {
-				if !seenQ[q] {
-					seenQ[q] = true
-					newGaps = append(newGaps, Gap{
-						FieldID:  "",
-						Pergunta: q,
-						RoleNome: r.Nome,
-						Tipo:     parser.FieldTextarea,
-					})
-				}
+			if len(r.GapsComuns) == 0 {
+				continue
 			}
+			var roleGaps []*ContextGap
+			for _, q := range r.GapsComuns {
+				roleGaps = append(roleGaps, &ContextGap{
+					FieldID:  "",
+					Pergunta: q,
+					RoleNome: r.Nome,
+					Tipo:     parser.FieldTextarea,
+				})
+			}
+			sections = append(sections, ContextSection{
+				Title: r.Nome,
+				Kind:  "role",
+				Gaps:  roleGaps,
+			})
 		}
 
-		m.gaps = newGaps
-		m.gapIndex = 0
-		m.gapAnswers = make([]string, len(m.gaps))
-		if len(m.gaps) > 0 {
-			m.screen = screenGap
+		m.contextSections = sections
+		m.contextSecIdx = 0
+		m.contextCursor = 0
+		m.contextEditing = false
+		m.contextMultiIdx = 0
+		m.contextRoleFilter = -1
+		if len(m.contextSections) > 0 {
+			m.screen = screenContext
 			m.textArea.Reset()
 			m.textArea.SetHeight(4)
 			m.textArea.Placeholder = "Digite sua resposta..."
-			m.textArea.Focus()
 		} else {
 			m.screen = screenAskPhase
 		}
@@ -253,39 +263,204 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// --- Gap ---
+func (m AppModel) updateContext(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.contextEditing {
+		return m.updateContextEditing(msg)
+	}
 
-func (m AppModel) updateGap(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
-		if m.gapIndex > 0 {
-			m.gapIndex--
-			m.textArea.Reset()
-			m.textArea.SetHeight(4)
-			m.textArea.Placeholder = "Digite sua resposta..."
-			m.textArea.SetValue(m.gapAnswers[m.gapIndex])
-			m.textArea.Focus()
-		} else {
-			m.screen = screenNarrative
-			m.textArea.SetHeight(8)
-			m.textArea.Placeholder = "Descreva a tarefa livremente...\n(Ctrl+S para confirmar)"
-			m.textArea.SetValue(m.narrative)
-			m.textArea.Focus()
+		m.screen = screenNarrative
+		m.textArea.SetHeight(8)
+		m.textArea.Placeholder = "Descreva a tarefa livremente...\n(Ctrl+S para confirmar)"
+		m.textArea.SetValue(m.narrative)
+		m.textArea.Focus()
+		return m, nil
+
+	case "ctrl+s":
+		m.screen = screenAskPhase
+		return m, nil
+
+	case "up", "k":
+		if m.contextCursor > 0 {
+			m.contextCursor--
 		}
+	case "down", "j":
+		sec := m.activeSection()
+		if sec != nil && m.contextCursor < len(sec.Gaps)-1 {
+			m.contextCursor++
+		}
+	case "left", "h":
+		m.moveSection(-1)
+	case "right", "l":
+		m.moveSection(1)
+	case "tab":
+		m.cycleRoleFilter()
+
+	case "enter":
+		gap := m.currentContextGap()
+		if gap == nil {
+			return m, nil
+		}
+		if gap.Tipo == parser.FieldSelect && len(gap.Opcoes) > 0 {
+			idx := -1
+			for i, o := range gap.Opcoes {
+				if o == gap.Answer {
+					idx = i
+					break
+				}
+			}
+			idx = (idx + 1) % len(gap.Opcoes)
+			gap.Answer = gap.Opcoes[idx]
+			return m, nil
+		}
+		if gap.Tipo == parser.FieldMultiselect && len(gap.Opcoes) > 0 {
+			op := gap.Opcoes[m.contextMultiIdx%len(gap.Opcoes)]
+			m.contextMultiIdx++
+			parts := strings.Split(gap.Answer, ", ")
+			var newParts []string
+			found := false
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p == op {
+					found = true
+					continue
+				}
+				if p != "" {
+					newParts = append(newParts, p)
+				}
+			}
+			if !found {
+				newParts = append(newParts, op)
+			}
+			gap.Answer = strings.Join(newParts, ", ")
+			return m, nil
+		}
+		m.contextEditing = true
+		m.textArea.Reset()
+		m.textArea.SetHeight(4)
+		m.textArea.Placeholder = "Digite sua resposta..."
+		m.textArea.SetValue(gap.Answer)
+		m.textArea.Focus()
+		return m, nil
+	}
+	return m, nil
+}
+
+func (m AppModel) moveSection(delta int) {
+	roleSecs := m.roleSectionIndices()
+	if m.contextRoleFilter >= 0 {
+		if len(roleSecs) == 0 {
+			return
+		}
+		cur := m.contextRoleFilter
+		cur += delta
+		if cur < 0 {
+			cur = len(roleSecs) - 1
+		}
+		if cur >= len(roleSecs) {
+			cur = 0
+		}
+		m.contextRoleFilter = cur
+		m.contextCursor = 0
+		return
+	}
+	// filtro "todos": navega entre todas as secoes
+	all := m.visibleSections()
+	if len(all) == 0 {
+		return
+	}
+	cur := m.contextSecIdx + delta
+	if cur < 0 {
+		cur = len(all) - 1
+	}
+	if cur >= len(all) {
+		cur = 0
+	}
+	newSec := all[cur]
+	// acha o indice real em contextSections
+	for i, sec := range m.contextSections {
+		if sec.Title == newSec.Title && sec.Kind == newSec.Kind {
+			m.contextSecIdx = i
+			break
+		}
+	}
+	if len(newSec.Gaps) > 0 && m.contextCursor >= len(newSec.Gaps) {
+		m.contextCursor = len(newSec.Gaps) - 1
+	}
+	if m.contextCursor < 0 {
+		m.contextCursor = 0
+	}
+}
+
+func (m AppModel) cycleRoleFilter() {
+	roleSecs := m.roleSectionIndices()
+	if len(roleSecs) == 0 {
+		return
+	}
+	m.contextRoleFilter++
+	if m.contextRoleFilter >= len(roleSecs) {
+		m.contextRoleFilter = -1
+	}
+	m.contextSecIdx = 0
+	m.contextCursor = 0
+}
+
+// roleSectionIndices retorna indices em contextSections das secoes kind="role"
+func (m AppModel) roleSectionIndices() []int {
+	var idxs []int
+	for i, sec := range m.contextSections {
+		if sec.Kind == "role" {
+			idxs = append(idxs, i)
+		}
+	}
+	return idxs
+}
+
+// visibleSections retorna secoes visiveis considerando o filtro de papel
+func (m AppModel) visibleSections() []ContextSection {
+	if m.contextRoleFilter < 0 {
+		return m.contextSections
+	}
+	roleSecs := m.roleSectionIndices()
+	if m.contextRoleFilter >= len(roleSecs) {
+		return m.contextSections
+	}
+	visible := make([]ContextSection, 0)
+	for i, sec := range m.contextSections {
+		if sec.Kind == "model" {
+			visible = append(visible, sec)
+		} else if i == roleSecs[m.contextRoleFilter] {
+			visible = append(visible, sec)
+		}
+	}
+	return visible
+}
+
+// activeSection retorna a secao ativa (considerando filtro)
+func (m AppModel) activeSection() *ContextSection {
+	visible := m.visibleSections()
+	if m.contextSecIdx >= len(visible) {
+		return nil
+	}
+	return &visible[m.contextSecIdx]
+}
+
+func (m AppModel) updateContextEditing(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		return m, tea.Quit
+	case "esc":
+		m.contextEditing = false
 		return m, nil
 	case "ctrl+s":
-		m.gapAnswers[m.gapIndex] = m.textArea.Value()
-		m.gapIndex++
-		if m.gapIndex >= len(m.gaps) {
-			m.screen = screenAskPhase
-		} else {
-			m.textArea.Reset()
-			m.textArea.SetHeight(4)
-			m.textArea.Placeholder = "Digite sua resposta..."
-			m.textArea.Focus()
+		gap := m.currentContextGap()
+		if gap != nil {
+			gap.Answer = m.textArea.Value()
 		}
+		m.contextEditing = false
 		return m, nil
 	}
 	var cmd tea.Cmd
@@ -293,16 +468,24 @@ func (m AppModel) updateGap(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// --- Ask Phase ---
+func (m AppModel) currentContextGap() *ContextGap {
+	sec := m.activeSection()
+	if sec == nil {
+		return nil
+	}
+	if m.contextCursor < len(sec.Gaps) {
+		return sec.Gaps[m.contextCursor]
+	}
+	return nil
+}
 
 func (m AppModel) updateAskPhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c":
 		return m, tea.Quit
 	case "esc":
-		if len(m.gaps) > 0 {
-			m.screen = screenGap
-			m.gapIndex = len(m.gaps) - 1
+		if len(m.contextSections) > 0 {
+			m.screen = screenContext
 		} else {
 			m.screen = screenNarrative
 		}
@@ -315,20 +498,18 @@ func (m AppModel) updateAskPhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.askPhaseChoice++
 		}
 	case "enter":
-		if m.askPhaseChoice == 0 { // sim
+		if m.askPhaseChoice == 0 {
 			m.textInput.Reset()
 			m.textInput.Placeholder = "Quantidade de fases (ex: 3)"
 			m.textInput.Focus()
 			m.screen = screenDefinePhase
-			m.phaseIndex = -1 // -1 = coletando quantidade
+			m.phaseIndex = -1
 		} else {
 			m = m.buildAndSave()
 		}
 	}
 	return m, nil
 }
-
-// --- Define Phase ---
 
 func (m AppModel) updateDefinePhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -343,7 +524,6 @@ func (m AppModel) updateDefinePhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "enter", "tab":
 		if m.phaseIndex == -1 {
-			// coletando quantidade
 			n, err := strconv.Atoi(strings.TrimSpace(m.textInput.Value()))
 			if err != nil || n < 1 {
 				return m, nil
@@ -351,7 +531,6 @@ func (m AppModel) updateDefinePhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.phaseCount = n
 			m.phaseIndex = 0
 			m.phaseEditField = 0
-			// inicializa steps vazios
 			steps := make([]parser.Step, n)
 			m.values.Steps["fases"] = steps
 			m.textInput.Reset()
@@ -359,14 +538,12 @@ func (m AppModel) updateDefinePhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.phaseEditField == 0 {
-			// salvou título, vai pra descrição
 			m.values.Steps["fases"][m.phaseIndex].Titulo = m.textInput.Value()
 			m.phaseEditField = 1
 			m.textArea.Reset()
 			m.textArea.Focus()
 			return m, nil
 		}
-		// salvou descrição
 		m.values.Steps["fases"][m.phaseIndex].Descricao = m.textArea.Value()
 		m.phaseIndex++
 		if m.phaseIndex >= m.phaseCount {
@@ -389,8 +566,6 @@ func (m AppModel) updateDefinePhase(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// --- Done ---
-
 func (m AppModel) updateDone(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "q", "enter":
@@ -398,4 +573,3 @@ func (m AppModel) updateDone(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	return m, nil
 }
-

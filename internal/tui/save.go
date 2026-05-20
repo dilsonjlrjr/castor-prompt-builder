@@ -38,7 +38,6 @@ func slugify(s string) string {
 func (m AppModel) buildAndSave() AppModel {
 	model := m.models[m.selectedModel]
 
-	// combina múltiplos papéis selecionados
 	var nomes, descs []string
 	roleID := "papel"
 	for idx := range m.roles {
@@ -59,43 +58,16 @@ func (m AppModel) buildAndSave() AppModel {
 		roleDesc = ""
 	}
 
-	// ── valores auto-mapeados ────────────────────────────────────────────────
-	m.values.Fields["role"]    = roleNome + ". " + roleDesc
-	m.values.Fields["action"]  = m.narrative
+	m.values.Fields["role"]   = roleNome + ". " + roleDesc
+	m.values.Fields["action"] = m.narrative
 	m.values.Fields["context"] = m.narrative
-	m.values.Fields["task"]    = m.narrative
-	m.values.Fields["input"]   = m.narrative
-
-	// ── gap answers: campos do modelo → campo real; gaps de papel → seção extra depois ──
-	for i, ga := range m.gaps {
-		if i >= len(m.gapAnswers) {
-			break
-		}
-		ans := strings.TrimSpace(m.gapAnswers[i])
-		if ans == "" || ga.FieldID == "" {
-			continue // role gaps são injetados em seção extra
-		}
-		if ga.Tipo == "list" || ga.Tipo == "multiselect" {
-			var items []string
-			for _, line := range strings.Split(ans, "\n") {
-				if t := strings.TrimSpace(line); t != "" {
-					items = append(items, t)
-				}
-			}
-			if len(items) > 0 {
-				m.values.Lists[ga.FieldID] = items
-			}
-		} else {
-			m.values.Fields[ga.FieldID] = ans
-		}
-	}
+	m.values.Fields["task"]   = m.narrative
+	m.values.Fields["input"]  = m.narrative
 
 	rendered := engine.Render(model.Template, m.values)
 
-	// ── seções extras (após o template) ─────────────────────────────────────
 	var extras strings.Builder
 
-	// fases: fallback para modelos sem {{#steps}}
 	if len(m.values.Steps["fases"]) > 0 && !strings.Contains(model.Template, "{{#steps") {
 		extras.WriteString("\n\n---\n## Fases de execução\n\n")
 		for i, s := range m.values.Steps["fases"] {
@@ -103,7 +75,6 @@ func (m AppModel) buildAndSave() AppModel {
 		}
 	}
 
-	// habilidades dos papéis (dedup)
 	seenH := map[string]bool{}
 	var habs []string
 	for idx := range m.roles {
@@ -124,7 +95,6 @@ func (m AppModel) buildAndSave() AppModel {
 		}
 	}
 
-	// tom dos papéis
 	var toms []string
 	for idx := range m.roles {
 		if !m.selectedRoles[idx] {
@@ -142,21 +112,40 @@ func (m AppModel) buildAndSave() AppModel {
 		}
 	}
 
-	// contexto dos papéis: gaps_comuns respondidos
+	// coleta respostas do contexto
 	var gapCtx []string
-	for i, ga := range m.gaps {
-		if i >= len(m.gapAnswers) {
-			break
-		}
-		ans := strings.TrimSpace(m.gapAnswers[i])
-		if ga.FieldID == "" && ans != "" {
-			label := ga.Pergunta
-			if ga.RoleNome != "" {
-				label = ga.RoleNome + " — " + ga.Pergunta
+	var unanswered []string
+
+	for _, sec := range m.contextSections {
+		for _, g := range sec.Gaps {
+			ans := strings.TrimSpace(g.Answer)
+			if g.FieldID != "" {
+				if g.Tipo == "list" || g.Tipo == "multiselect" {
+					var items []string
+					for _, line := range strings.Split(ans, "\n") {
+						if t := strings.TrimSpace(line); t != "" {
+							items = append(items, t)
+						}
+					}
+					if len(items) > 0 {
+						m.values.Lists[g.FieldID] = items
+					}
+				} else {
+					m.values.Fields[g.FieldID] = ans
+				}
+				if g.Obrigatorio && ans == "" {
+					unanswered = append(unanswered, g.Pergunta)
+				}
+			} else if ans != "" {
+				label := g.Pergunta
+				if g.RoleNome != "" {
+					label = g.RoleNome + " — " + g.Pergunta
+				}
+				gapCtx = append(gapCtx, "**"+label+"**\n"+ans)
 			}
-			gapCtx = append(gapCtx, "**"+label+"**\n"+ans)
 		}
 	}
+
 	if len(gapCtx) > 0 {
 		extras.WriteString("\n\n---\n## Contexto dos papéis\n\n")
 		for _, g := range gapCtx {
@@ -168,18 +157,6 @@ func (m AppModel) buildAndSave() AppModel {
 		rendered += extras.String()
 	}
 
-	// ── gaps obrigatórios não respondidos → aviso no rodapé ─────────────────
-	var unanswered []string
-	for i, ga := range m.gaps {
-		if i >= len(m.gapAnswers) {
-			break
-		}
-		if ga.FieldID != "" && ga.Obrigatorio && strings.TrimSpace(m.gapAnswers[i]) == "" {
-			unanswered = append(unanswered, ga.Pergunta)
-		}
-	}
-
-	// ── salvar arquivo ───────────────────────────────────────────────────────
 	date := time.Now().Format("20060102")
 	slug := slugify(m.narrative)
 	filename := fmt.Sprintf("%s_%s_%s.md", date, roleID, slug)
@@ -216,7 +193,6 @@ func (m AppModel) buildAndSave() AppModel {
 	return m
 }
 
-// unique remove duplicatas preservando ordem
 func unique(ss []string) []string {
 	seen := make(map[string]bool)
 	var out []string

@@ -14,62 +14,68 @@ const (
 	screenModelInfo
 	screenSelectRole
 	screenNarrative
-	screenGap
+	screenContext
 	screenAskPhase
 	screenDefinePhase
 	screenDone
 )
 
-// AppModel é o modelo principal do wizard bubbletea
 type AppModel struct {
 	screen screen
 	width  int
 	height int
 
-	// dados carregados
 	models []*parser.Model
 	roles  []*parser.Role
 
-	// seleções
 	selectedModel int
-	// multi-select de papéis
 	roleCursor    int
 	selectedRoles map[int]bool
 	roleSearch    string
 
-	// inputs
 	textInput textinput.Model
 	textArea  textarea.Model
 
-	// valores coletados
-	narrative  string
-	values     *engine.Values
-	gaps       []Gap  // perguntas pendentes (campos do modelo + gaps_comuns dos papéis)
-	gapIndex   int    // gap atual
-	gapAnswers []string
+	narrative string
+	values    *engine.Values
+
+	// contexto (antigo screenGap)
+	contextSections  []ContextSection
+	contextSecIdx    int
+	contextCursor    int
+	contextEditing   bool
+	contextMultiIdx  int    // indice do ciclo para multiselect
+	contextRoleFilter int   // -1=todos, 0+=indice da secao de papel
 
 	// scroll de telas
-	modelInfoOffset int // linha inicial do scroll em viewModelInfo
+	modelInfoOffset int
 
 	// fases
-	askPhaseChoice int // 0=não definido, 1=sim, 2=não
+	askPhaseChoice int
 	phaseCount     int
 	phaseIndex     int
 	phaseTitle     string
-	phaseEditField int // 0=titulo, 1=descricao
+	phaseEditField int
 
 	// resultado
 	savedPath string
 	err       error
 }
 
-// Gap representa uma pergunta de contexto do wizard.
-// Pode ser um campo do modelo (FieldID preenchido) ou um gaps_comuns de papel (FieldID vazio).
-type Gap struct {
-	FieldID     string           // ID do campo no modelo; vazio para gaps de papel
-	Pergunta    string           // texto exibido ao usuário
-	RoleNome    string           // nome do papel de origem (somente para gaps de papel)
+// ContextGap representa uma pergunta de contexto com sua resposta.
+type ContextGap struct {
+	FieldID     string
+	Pergunta    string
+	RoleNome    string
 	Obrigatorio bool
-	Tipo        parser.FieldType // text, textarea, select, multiselect, list
+	Tipo        parser.FieldType
 	Opcoes      []string
+	Answer      string
+}
+
+// ContextSection agrupa lacunas de contexto — do modelo ou de um papel.
+type ContextSection struct {
+	Title string
+	Kind  string // "model" ou "role"
+	Gaps  []*ContextGap
 }

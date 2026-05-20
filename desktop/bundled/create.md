@@ -38,6 +38,11 @@ campos:
     label: Expectativa de entrega
     tipo: textarea
     obrigatorio: true
+
+  - id: premissas
+    label: Premissas e condições
+    tipo: list
+    obrigatorio: false
 ---
 
 ## Template de saída
@@ -57,6 +62,12 @@ Adote um tom {{tom}}.
 {{#if examples}}
 ## Referências
 {{#each examples}}- {{.}}
+{{/each}}
+{{/if}}
+
+{{#if premissas}}
+## Premissas
+{{#each premissas}}- {{.}}
 {{/each}}
 {{/if}}
 

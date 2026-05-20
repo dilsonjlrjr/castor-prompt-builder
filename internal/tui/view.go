@@ -5,12 +5,11 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
 )
 
-// maxHeight é o teto em linhas (~550px a ~16px/linha).
 const maxHeight = 35
 
-// effectiveHeight retorna a altura real a usar: mín(terminalHeight, maxHeight).
 func (m AppModel) effectiveHeight() int {
 	if m.height > 0 && m.height < maxHeight {
 		return m.height
@@ -18,7 +17,6 @@ func (m AppModel) effectiveHeight() int {
 	return maxHeight
 }
 
-// capHeight garante que o conteúdo tenha exatamente h linhas.
 func capHeight(s string, h int) string {
 	lines := strings.Split(s, "\n")
 	if len(lines) > h {
@@ -41,8 +39,8 @@ func (m AppModel) View() string {
 		return capHeight(m.viewSelectRole(), h)
 	case screenNarrative:
 		return capHeight(m.viewNarrative(), h)
-	case screenGap:
-		return capHeight(m.viewGap(), h)
+	case screenContext:
+		return capHeight(m.viewContext(), h)
 	case screenAskPhase:
 		return capHeight(m.viewAskPhase(), h)
 	case screenDefinePhase:
@@ -53,10 +51,6 @@ func (m AppModel) View() string {
 	return ""
 }
 
-// renderCastor adapta o cabeçalho ao espaço disponível.
-// - largura >= mascote+título+4 : lado a lado (layout completo)
-// - largura >= título            : só o título em pixel font
-// - largura pequena              : texto simples centralizado
 func renderCastor(availableWidth int) string {
 	mascot := renderMascote()
 	title := bigTitle()
@@ -81,7 +75,6 @@ func renderCastor(availableWidth int) string {
 	if availableWidth >= titleW+2 {
 		return title
 	}
-	// terminal muito estreito
 	return lipgloss.NewStyle().
 		Foreground(colorPrimary).
 		Bold(true).
@@ -92,7 +85,6 @@ func badge(txt string) string {
 	return styleBadge.Render(" " + txt + " ")
 }
 
-// siglas mapeia o ID do modelo para o significado do acrônimo
 var siglas = map[string]string{
 	"rtf":    "Role · Task · Format",
 	"race":   "Role · Action · Context · Expectation",
@@ -102,13 +94,10 @@ var siglas = map[string]string{
 
 const propositoCastor = "Construa prompts estruturados para LLMs em segundos.\nEscolha um framework, descreva sua tarefa e o CASTOR monta o prompt ideal."
 
-// --- Selecionar Modelo ---
-
 func (m AppModel) viewSelectModel() string {
 	var sb strings.Builder
 	sb.WriteString(renderCastor(m.width) + "\n\n")
 
-	// propósito
 	sb.WriteString(lipgloss.NewStyle().
 		Foreground(colorText).
 		PaddingLeft(1).
@@ -118,7 +107,6 @@ func (m AppModel) viewSelectModel() string {
 		styleSubtitle.Render("Selecione o modelo de prompt:") +
 			"  " + styleMuted.Render("(pressione i para mais informações)") + "\n\n")
 
-	// largura máxima dos nomes para alinhamento tabular
 	maxNome := 0
 	for _, mod := range m.models {
 		if len(mod.Nome) > maxNome {
@@ -141,8 +129,6 @@ func (m AppModel) viewSelectModel() string {
 	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   Enter selecionar   q sair"))
 	return sb.String()
 }
-
-// --- Info do Modelo ---
 
 var modelInfos = map[string]string{
 	"rtf": `
@@ -283,7 +269,6 @@ func (m AppModel) viewModelInfo() string {
 		info = "\nNenhuma informação adicional disponível para este modelo."
 	}
 
-	// área disponível: altura efetiva − cabeçalho(3) − rodapé(2)
 	infoAreaH := m.effectiveHeight() - 5
 	if infoAreaH < 5 {
 		infoAreaH = 5
@@ -315,7 +300,6 @@ func (m AppModel) viewModelInfo() string {
 	return sb.String()
 }
 
-// nomeCategoria mapeia o id do diretório para nome de exibição
 var nomeCategoria = map[string]string{
 	"arquitetura":  "Arquitetura",
 	"frontend":     "Frontend & Mobile",
@@ -330,8 +314,6 @@ var nomeCategoria = map[string]string{
 	"qa":           "QA & Testes",
 	"documentacao": "Documentação",
 }
-
-// --- Selecionar Papel ---
 
 func (m AppModel) viewSelectRole() string {
 	model := m.models[m.selectedModel]
@@ -359,13 +341,11 @@ func (m AppModel) viewSelectRole() string {
 		return sb.String()
 	}
 
-	// área disponível para a lista: altura − cabeçalho(8) − rodapé(2) − indicadores(2)
 	listH := m.effectiveHeight() - 12
 	if listH < 4 {
 		listH = 4
 	}
 
-	// monta todas as entradas (cabeçalhos de categoria + papéis)
 	type entrada struct {
 		texto    string
 		isCursor bool
@@ -407,7 +387,6 @@ func (m AppModel) viewSelectRole() string {
 		})
 	}
 
-	// janela centrada no cursor
 	half := listH / 2
 	start := cursorLinha - half
 	if start < 0 {
@@ -435,8 +414,6 @@ func (m AppModel) viewSelectRole() string {
 	return sb.String()
 }
 
-// --- Narrativa ---
-
 func (m AppModel) selectedRoleNames() string {
 	var nomes []string
 	for idx, sel := range m.selectedRoles {
@@ -459,28 +436,213 @@ func (m AppModel) viewNarrative() string {
 	return sb.String()
 }
 
-// --- Gap ---
-
-func (m AppModel) viewGap() string {
-	total := len(m.gaps)
-	current := m.gapIndex + 1
-	gap := m.gaps[m.gapIndex]
+func (m AppModel) viewContext() string {
 	var sb strings.Builder
-	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge(fmt.Sprintf("lacuna %d de %d", current, total)) + "\n\n")
-	sb.WriteString(styleSubtitle.Render(gap.Pergunta) + "\n")
-	if gap.RoleNome != "" {
-		sb.WriteString(styleMuted.Render("  ↳ papel: "+gap.RoleNome) + "\n")
+	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "  " + badge("contexto") + "\n\n")
+
+	if m.contextEditing {
+		return m.viewContextEditing()
 	}
-	if gap.Obrigatorio {
-		sb.WriteString(styleMuted.Render("  ★ obrigatório") + "\n")
+
+	if len(m.contextSections) == 0 {
+		sb.WriteString(styleMuted.Render("  Nenhuma pergunta de contexto pendente.") + "\n\n")
+		sb.WriteString(styleHelp.Render("Ctrl+S gerar prompt   Esc voltar"))
+		return sb.String()
 	}
-	sb.WriteString("\n")
-	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
-	sb.WriteString(styleHelp.Render("Ctrl+S próximo   Esc voltar   (deixe vazio para pular)"))
+
+	availableH := m.effectiveHeight() - 4
+	allLines := m.buildContextLines()
+
+	cursorLine := m.contextCursorLine()
+	half := availableH / 2
+	start := cursorLine - half
+	if start < 0 {
+		start = 0
+	}
+	end := start + availableH
+	if end > len(allLines) {
+		end = len(allLines)
+		if start = end - availableH; start < 0 {
+			start = 0
+		}
+	}
+
+	if start > 0 {
+		sb.WriteString(styleMuted.Render("  ↑ mais acima") + "\n")
+	}
+	for _, l := range allLines[start:end] {
+		sb.WriteString(l + "\n")
+	}
+	if end < len(allLines) {
+		sb.WriteString(styleMuted.Render("  ↓ mais abaixo") + "\n")
+	}
+
+	sb.WriteString("\n" + styleHelp.Render("↑↓ navegar   ← → mudar seção   Tab filtrar papel   Enter preencher   Ctrl+S gerar prompt   Esc voltar"))
 	return sb.String()
 }
 
-// --- Fases ---
+func (m AppModel) contextCursorLine() int {
+	visible := m.visibleSections()
+	if len(visible) == 0 {
+		return 0
+	}
+	roleIndices := m.roleSectionIndices()
+	modelIdx := -1
+	for i, v := range visible {
+		if v.Kind == "model" {
+			modelIdx = i
+			break
+		}
+	}
+
+	line := 0
+	for si, sec := range visible {
+		if si == m.contextSecIdx {
+			line++ // header
+			line += m.contextCursor
+			return line
+		}
+		line++ // header
+		line += len(sec.Gaps)
+		line++ // blank separator
+
+		if si == modelIdx && len(roleIndices) > 0 {
+			line += 2 // role filter bar + blank
+		}
+	}
+	return line
+}
+
+
+func (m AppModel) buildContextLines() []string {
+	var lines []string
+
+	visible := m.visibleSections()
+	roleIndices := m.roleSectionIndices()
+	modelIdx := -1
+	for i, v := range visible {
+		if v.Kind == "model" {
+			modelIdx = i
+			break
+		}
+	}
+
+	for si, sec := range visible {
+		isActive := si == m.contextSecIdx
+
+		secHeader := "── " + sec.Title + " ──"
+		if isActive {
+			lines = append(lines, styleSelected.Render(secHeader))
+		} else {
+			lines = append(lines, styleMuted.Render(secHeader))
+		}
+
+		for gi, g := range sec.Gaps {
+			lines = append(lines, m.renderGapLine(si, gi, si == m.contextSecIdx, g))
+		}
+		lines = append(lines, "")
+
+		// apos a secao do modelo, insere barra de filtro de papeis
+		if si == modelIdx && len(roleIndices) > 0 {
+			lines = append(lines, m.renderRoleFilterBar()...)
+			lines = append(lines, "")
+		}
+	}
+	return lines
+}
+
+func (m AppModel) renderRoleFilterBar() []string {
+	roleIndices := m.roleSectionIndices()
+	if len(roleIndices) == 0 {
+		return nil
+	}
+
+	var parts []string
+	// "Todos"
+	if m.contextRoleFilter < 0 {
+		parts = append(parts, styleSelected.Render("[Todos]"))
+	} else {
+		parts = append(parts, styleMuted.Render(" Todos "))
+	}
+	for i, ri := range roleIndices {
+		name := m.contextSections[ri].Title
+		// encurta nome se muito longo
+		if len(name) > 25 {
+			name = name[:25] + "..."
+		}
+		if i == m.contextRoleFilter {
+			parts = append(parts, styleSelected.Render("["+name+"]"))
+		} else {
+			parts = append(parts, styleMuted.Render(" "+name+" "))
+		}
+	}
+	return []string{styleMuted.Render("  Papéis: ") + strings.Join(parts, " ")}
+}
+
+func (m AppModel) renderGapLine(sectionIdx int, gapIdx int, isActive bool, g *ContextGap) string {
+	cursor := "  "
+	style := styleNormal
+	if isActive && gapIdx == m.contextCursor {
+		cursor = styleSelected.Render("> ")
+		style = styleSelected
+	}
+
+	prefix := ""
+	if g.Obrigatorio {
+		prefix = "★ "
+	}
+
+	value := m.formatGapValue(g)
+	if value != "" {
+		return cursor + style.Render(prefix+g.Pergunta+":") + "  " + styleMuted.Render(value)
+	}
+	return cursor + style.Render(prefix+g.Pergunta) + "  " + styleMuted.Render("(vazio)")
+}
+
+func (m AppModel) formatGapValue(g *ContextGap) string {
+	if g.Answer == "" {
+		return ""
+	}
+	if g.Tipo == parser.FieldSelect {
+		return "[" + g.Answer + "]"
+	}
+	if g.Tipo == parser.FieldMultiselect {
+		return "[" + g.Answer + "]"
+	}
+	val := strings.ReplaceAll(g.Answer, "\n", " ")
+	if len(val) > 40 {
+		val = val[:40] + "..."
+	}
+	return val
+}
+
+func (m AppModel) viewContextEditing() string {
+	var sb strings.Builder
+	gap := m.currentContextGap()
+	if gap == nil {
+		return sb.String()
+	}
+
+	label := gap.Pergunta
+	if gap.Obrigatorio {
+		label = "★ " + label
+	}
+	if gap.RoleNome != "" {
+		label += "  " + styleMuted.Render("("+gap.RoleNome+")")
+	}
+
+	sb.WriteString(styleSubtitle.Render(label) + "\n")
+	if gap.Tipo == parser.FieldSelect && len(gap.Opcoes) > 0 {
+		sb.WriteString(styleMuted.Render("  opções: "+strings.Join(gap.Opcoes, ", ")) + "\n\n")
+	} else if gap.Tipo == parser.FieldMultiselect && len(gap.Opcoes) > 0 {
+		sb.WriteString(styleMuted.Render("  opções (multiselect): "+strings.Join(gap.Opcoes, ", ")) + "\n\n")
+	} else {
+		sb.WriteString("\n")
+	}
+	sb.WriteString(styleBorder.Render(m.textArea.View()) + "\n\n")
+	sb.WriteString(styleHelp.Render("Ctrl+S salvar   Esc cancelar"))
+	return sb.String()
+}
 
 func (m AppModel) viewAskPhase() string {
 	options := []string{"Sim, definir fases", "Não, gerar direto"}
@@ -528,8 +690,6 @@ func (m AppModel) viewDefinePhase() string {
 	return sb.String()
 }
 
-// --- Concluído ---
-
 func (m AppModel) viewDone() string {
 	var sb strings.Builder
 	sb.WriteString(styleHeader.Render(" CASTOR BUILDER ") + "\n\n")
@@ -546,5 +706,4 @@ func (m AppModel) viewDone() string {
 	return sb.String()
 }
 
-// lipgloss usado via mascot.go — evita import não utilizado
 var _ = lipgloss.Color("")

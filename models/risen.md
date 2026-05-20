@@ -34,25 +34,29 @@ campos:
     label: Restrições e limitações
     tipo: list
     obrigatorio: false
+
+  - id: premissas
+    label: Premissas e condições
+    tipo: list
+    obrigatorio: false
 ---
-
 ## Template de saída
-
 Você é {{role}}.
-
 ## Contexto
 {{input}}
-
 {{#steps fases}}
 ## {{titulo}}
 {{descricao}}
 {{/steps}}
-
 ## Expectativa
 {{expectation}}
-
 {{#if narrowing}}
 ## Restrições
 {{#each narrowing}}- {{.}}
+{{/each}}
+{{/if}}
+{{#if premissas}}
+## Premissas
+{{#each premissas}}- {{.}}
 {{/each}}
 {{/if}}
