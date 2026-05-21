@@ -163,7 +163,61 @@
     const first = await IsFirstRun()
     if (first) { tutorialSlide = 0; showTutorial = true }
     await runValidation()
+    hasSavedState = !!localStorage.getItem(SAVE_KEY)
   })
+
+  // ---- persistência de estado ----
+  const SAVE_KEY = 'castor_wizard_state'
+
+  function saveState() {
+    const state = {
+      screen,
+      selectedModelId: selectedModel?.id ?? null,
+      selectedRoleIds: [...selectedRoles],
+      narrative,
+      contextSections: contextSections.map(s => ({
+        ...s,
+        gaps: s.gaps.map(g => ({ fieldId: g.fieldId, pergunta: g.pergunta, tipo: g.tipo, opcoes: g.opcoes, obrigatorio: g.obrigatorio, roleNome: g.roleNome, answer: g.answer }))
+      })),
+      usePhases,
+      phases,
+    }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state))
+  }
+
+  function clearState() {
+    localStorage.removeItem(SAVE_KEY)
+  }
+
+  $: if (screen && screen !== 'result') saveState()
+
+  function resumeState() {
+    const raw = localStorage.getItem(SAVE_KEY)
+    if (!raw) return false
+    try {
+      const s = JSON.parse(raw)
+      if (s.selectedModelId) selectedModel = models.find(m => m.id === s.selectedModelId) ?? null
+      if (s.selectedRoleIds) selectedRoles = new Set(s.selectedRoleIds)
+      if (s.narrative) narrative = s.narrative
+      if (s.contextSections) contextSections = s.contextSections.map((sec: any) => ({ ...sec, gaps: sec.gaps.map((g: any) => ({ ...g, answer: g.answer ?? '' })) }))
+      if (s.usePhases !== undefined) usePhases = s.usePhases
+      if (s.phases) phases = s.phases
+      if (s.screen && s.screen !== 'model') {
+        screen = s.screen
+        allExpanded = false
+        // expand all sections on resume
+        collapsedSections = {}
+      }
+      return true
+    } catch { return false }
+  }
+
+  function dismissResume() {
+    clearState()
+    hasSavedState = false
+  }
+
+  let hasSavedState = false
 
   // ---- stepper ----
   const STEPS: { id: Screen; label: string }[] = [
@@ -473,6 +527,7 @@
     resultError   = result.erro ?? ''
     building      = false
     screen        = 'result'
+    clearState()
   }
 
   async function copyResult() {
@@ -497,6 +552,7 @@
     resultPath       = '' as string
     resultError      = ''
     screen           = 'model'
+    clearState()
   }
 </script>
 
@@ -996,6 +1052,23 @@
         ============================================================= -->
         {#if screen === 'model'}
           <div in:fly={{ y: 16, duration: 200 }}>
+            {#if hasSavedState}
+              <div class="flex items-center justify-between p-3 mb-5 rounded-xl border border-[#f5a623]/30 bg-[#f5a623]/8">
+                <span class="text-xs text-[#f5a623]">Você tem um progresso salvo. Deseja continuar?</span>
+                <div class="flex gap-2">
+                  <button on:click={() => { resumeState(); hasSavedState = false }}
+                    class="px-4 py-1.5 rounded-lg bg-[#f5a623] text-black text-xs font-bold
+                           hover:bg-[#e09010] transition-all">
+                    Sim, continuar
+                  </button>
+                  <button on:click={dismissResume}
+                    class="px-4 py-1.5 rounded-lg border border-[#2a2a42] text-[#6e7681] text-xs
+                           hover:border-[#f5a623]/40 transition-all">
+                    Não, começar novo
+                  </button>
+                </div>
+              </div>
+            {/if}
             <h2 class="text-lg font-bold mb-1">Escolha o framework</h2>
             <p class="text-sm text-[#6e7681] mb-6">
               Cada modelo estrutura o prompt de uma forma diferente.<br>
