@@ -144,10 +144,12 @@ func findSubdir(name string) string {
 
 // App é o struct principal exposto ao frontend via Wails.
 type App struct {
-	ctx      context.Context
-	models   []*parser.Model
-	roles    []*parser.Role
-	firstRun bool
+	ctx        context.Context
+	models     []*parser.Model
+	roles      []*parser.Role
+	firstRun   bool
+	modelCache map[string][]*parser.Model // cache por idioma (carregado sob demanda)
+	roleCache  map[string][]*parser.Role
 }
 
 func NewApp() *App {
@@ -162,22 +164,51 @@ func (a *App) IsFirstRun() bool {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-
 	a.firstRun = ensureUserDir()
+	a.modelCache = map[string][]*parser.Model{}
+	a.roleCache = map[string][]*parser.Role{}
 
+	// Carrega PT no startup: serve de fonte para BuildPrompt quando o idioma
+	// pedido não tem tradução, e também alimenta findModel/findRole.
+	a.models = a.loadModels("pt")
+	a.roles = a.loadRoles("pt")
+}
+
+// Aceita "", "pt", "en", "es". Normaliza para "pt" se inválido.
+func normalizeLang(l string) string {
+	switch l {
+	case "pt", "en", "es":
+		return l
+	}
+	return "pt"
+}
+
+func (a *App) loadModels(lang string) []*parser.Model {
+	lang = normalizeLang(lang)
+	if cached, ok := a.modelCache[lang]; ok {
+		return cached
+	}
 	base, _ := userDataDir()
-
-	models, err := parser.LoadAllModels(filepath.Join(base, "models"))
+	models, err := parser.LoadAllModelsLang(filepath.Join(base, "models"), lang)
 	if err != nil {
 		models = []*parser.Model{}
 	}
-	a.models = models
+	a.modelCache[lang] = models
+	return models
+}
 
-	roles, err := parser.LoadAllRoles(filepath.Join(base, "roles"))
+func (a *App) loadRoles(lang string) []*parser.Role {
+	lang = normalizeLang(lang)
+	if cached, ok := a.roleCache[lang]; ok {
+		return cached
+	}
+	base, _ := userDataDir()
+	roles, err := parser.LoadAllRolesLang(filepath.Join(base, "roles"), lang)
 	if err != nil {
 		roles = []*parser.Role{}
 	}
-	a.roles = roles
+	a.roleCache[lang] = roles
+	return roles
 }
 
 // ---- DTOs expostos ao frontend ----
@@ -228,6 +259,7 @@ type BuildRequestDTO struct {
 	Narrativa  string         `json:"narrativa"`
 	GapAnswers []GapAnswerDTO `json:"gap_answers"`
 	Steps      []StepDTO      `json:"steps"`
+	Lang       string         `json:"lang,omitempty"` // pt|en|es; "" = pt
 }
 
 type BuildResultDTO struct {
@@ -244,8 +276,8 @@ var autoMapped = map[string]bool{
 
 // ---- Lookups internos ----
 
-func (a *App) findModel(id string) *parser.Model {
-	for _, m := range a.models {
+func (a *App) findModelLang(id, lang string) *parser.Model {
+	for _, m := range a.loadModels(lang) {
 		if m.ID == id {
 			return m
 		}
@@ -253,8 +285,8 @@ func (a *App) findModel(id string) *parser.Model {
 	return nil
 }
 
-func (a *App) findRole(id string) *parser.Role {
-	for _, r := range a.roles {
+func (a *App) findRoleLang(id, lang string) *parser.Role {
+	for _, r := range a.loadRoles(lang) {
 		if r.ID == id {
 			return r
 		}
@@ -263,10 +295,10 @@ func (a *App) findRole(id string) *parser.Role {
 }
 
 // resolveRoles devolve, na ordem dos IDs, os papéis encontrados (ignora IDs inválidos).
-func (a *App) resolveRoles(ids []string) []*parser.Role {
+func (a *App) resolveRolesLang(ids []string, lang string) []*parser.Role {
 	out := make([]*parser.Role, 0, len(ids))
 	for _, id := range ids {
-		if r := a.findRole(id); r != nil {
+		if r := a.findRoleLang(id, lang); r != nil {
 			out = append(out, r)
 		}
 	}
@@ -275,9 +307,12 @@ func (a *App) resolveRoles(ids []string) []*parser.Role {
 
 // ---- Métodos expostos ao frontend ----
 
-func (a *App) GetModels() []ModelDTO {
-	out := make([]ModelDTO, len(a.models))
-	for i, m := range a.models {
+// GetModels retorna os modelos no idioma pedido (pt|en|es). Sem tradução,
+// cai no PT por fallback (resolvido no parser).
+func (a *App) GetModels(lang string) []ModelDTO {
+	models := a.loadModels(lang)
+	out := make([]ModelDTO, len(models))
+	for i, m := range models {
 		var campos []CampoDTO
 		for _, c := range m.Campos {
 			// Exclui campos mapeados automaticamente e campos do tipo steps
@@ -298,9 +333,12 @@ func (a *App) GetModels() []ModelDTO {
 	return out
 }
 
-func (a *App) GetRoles() []RoleDTO {
-	out := make([]RoleDTO, len(a.roles))
-	for i, r := range a.roles {
+// GetRoles retorna os papéis no idioma pedido (pt|en|es). Papéis sem
+// tradução voltam em PT.
+func (a *App) GetRoles(lang string) []RoleDTO {
+	roles := a.loadRoles(lang)
+	out := make([]RoleDTO, len(roles))
+	for i, r := range roles {
 		out[i] = RoleDTO{
 			ID:          r.ID,
 			Nome:        r.Nome,
@@ -314,12 +352,13 @@ func (a *App) GetRoles() []RoleDTO {
 }
 
 func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
-	modelo := a.findModel(req.ModelID)
+	lang := normalizeLang(req.Lang)
+	modelo := a.findModelLang(req.ModelID, lang)
 	if modelo == nil {
 		return BuildResultDTO{Erro: "modelo não encontrado: " + req.ModelID}
 	}
 
-	selected := a.resolveRoles(req.RoleIDs)
+	selected := a.resolveRolesLang(req.RoleIDs, lang)
 
 	nomes := make([]string, 0, len(selected))
 	descs := make([]string, 0, len(selected))

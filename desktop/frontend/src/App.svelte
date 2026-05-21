@@ -111,9 +111,11 @@
   }
 
   // ---- ciclo de vida ----
+  let initialized = false
+
   onMount(async () => {
-    models = await GetModels()
-    roles  = await GetRoles()
+    models = await GetModels($lang)
+    roles  = await GetRoles($lang)
     const first = await IsFirstRun()
     if (first) { tutorialSlide = 0; showTutorial = true }
     await runValidation()
@@ -125,7 +127,20 @@
         return !!s.selectedModelId
       } catch { return false }
     })()
+    initialized = true
   })
+
+  // Recarrega modelos e papéis quando o idioma muda. Mantém a seleção atual:
+  // como model_id e role_id são estáveis entre idiomas, basta re-resolver pelo id.
+  async function reloadCatalogs(l: string) {
+    const [m, r] = await Promise.all([GetModels(l), GetRoles(l)])
+    models = m
+    roles  = r
+    if (selectedModel) {
+      selectedModel = m.find(x => x.id === selectedModel!.id) ?? selectedModel
+    }
+  }
+  $: if (initialized) { reloadCatalogs($lang) }
 
   // ---- persistência de estado ----
   const SAVE_KEY = 'castor_wizard_state'
@@ -473,6 +488,7 @@
       narrativa:   narrative,
       gap_answers: allGapAnswers,
       steps:       usePhases ? phases : [],
+      lang:        $lang,
     }))
     resultContent = result.conteudo
     resultError   = result.erro ?? ''

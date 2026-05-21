@@ -6,11 +6,11 @@ export function BuildPrompt(arg1:main.BuildRequestDTO):Promise<main.BuildResultD
 
 export function DeletePrompt(arg1:string):Promise<void>;
 
-export function GetModels():Promise<Array<main.ModelDTO>>;
+export function GetModels(arg1:string):Promise<Array<main.ModelDTO>>;
 
 export function GetPrompt(arg1:string):Promise<main.PromptDTO>;
 
-export function GetRoles():Promise<Array<main.RoleDTO>>;
+export function GetRoles(arg1:string):Promise<Array<main.RoleDTO>>;
 
 export function IsFirstRun():Promise<boolean>;
 

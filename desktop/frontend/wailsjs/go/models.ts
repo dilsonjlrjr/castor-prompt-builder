@@ -38,11 +38,12 @@ export namespace main {
 	    narrativa: string;
 	    gap_answers: GapAnswerDTO[];
 	    steps: StepDTO[];
-	
+	    lang?: string;
+
 	    static createFrom(source: any = {}) {
 	        return new BuildRequestDTO(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.model_id = source["model_id"];
@@ -50,6 +51,7 @@ export namespace main {
 	        this.narrativa = source["narrativa"];
 	        this.gap_answers = this.convertValues(source["gap_answers"], GapAnswerDTO);
 	        this.steps = this.convertValues(source["steps"], StepDTO);
+	        this.lang = source["lang"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

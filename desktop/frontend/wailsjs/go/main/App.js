@@ -10,16 +10,16 @@ export function DeletePrompt(arg1) {
   return window['go']['main']['App']['DeletePrompt'](arg1);
 }
 
-export function GetModels() {
-  return window['go']['main']['App']['GetModels']();
+export function GetModels(arg1) {
+  return window['go']['main']['App']['GetModels'](arg1);
 }
 
 export function GetPrompt(arg1) {
   return window['go']['main']['App']['GetPrompt'](arg1);
 }
 
-export function GetRoles() {
-  return window['go']['main']['App']['GetRoles']();
+export function GetRoles(arg1) {
+  return window['go']['main']['App']['GetRoles'](arg1);
 }
 
 export function IsFirstRun() {
