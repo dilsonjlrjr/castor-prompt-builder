@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CASTOR Builder — Prompts estruturados para LLMs, sem IA</title>
-  <meta name="description" content="Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para qualquer LLM. 47 papéis, 4 modelos, totalmente offline." />
+  <meta name="description" content="Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para qualquer LLM. 91 papéis, 4 modelos, multi-idioma (PT/EN/ES), totalmente offline." />
   <meta property="og:title" content="CASTOR Builder" />
-  <meta property="og:description" content="Prompts estruturados para LLMs — sem IA no processo." />
+  <meta property="og:description" content="Prompts estruturados para LLMs — sem IA no processo. 91 papéis em 23 categorias." />
   <meta property="og:image" content="https://raw.githubusercontent.com/dilsonjlrjr/castor-prompt-builder/master/assets/castor.png" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -120,7 +120,7 @@
     .hero h1 em { font-style: normal; color: var(--primary); }
     .hero-sub {
       font-size: clamp(1rem, 2vw, 1.2rem);
-      color: var(--muted); max-width: 580px; margin: 0 auto 2.5rem;
+      color: var(--muted); max-width: 620px; margin: 0 auto 2.5rem;
     }
     .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
     .btn {
@@ -243,16 +243,27 @@
     .feature-card p { font-size: .8rem; color: var(--muted); }
 
     /* ── ROLES ── */
-    .roles-grid {
+    .roles-by-cat {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: .75rem;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
     }
-    .role-chip {
+    .roles-cat-block {
       background: var(--bg3); border: 1px solid var(--border);
-      border-radius: 8px; padding: .6rem 1rem;
-      font-size: .8rem; color: var(--muted);
-      display: flex; align-items: center; gap: .5rem;
+      border-radius: 10px; padding: 1rem;
+    }
+    .roles-cat-header {
+      font-size: .7rem; font-weight: 800; letter-spacing: .1em;
+      text-transform: uppercase; margin-bottom: .6rem;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .roles-cat-count { color: var(--muted); font-weight: 400; }
+    .roles-chip-list { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .role-chip {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 6px; padding: .3rem .6rem;
+      font-size: .75rem; color: var(--muted);
     }
 
     /* ── DOWNLOAD ── */
@@ -306,6 +317,7 @@
       .hero { padding: 5rem 1rem 3rem; }
       section { padding: 3rem 1rem; }
       .download-section { padding: 1.5rem; }
+      .roles-by-cat { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -325,6 +337,7 @@
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLang('pt')" id="btn-pt">PT</button>
       <button class="lang-btn"        onclick="setLang('en')" id="btn-en">EN</button>
+      <button class="lang-btn"        onclick="setLang('es')" id="btn-es">ES</button>
     </div>
     <a href="#download" class="btn nav-cta" data-i18n="nav.cta">Download</a>
   </div>
@@ -339,7 +352,7 @@
   <h1 data-i18n="hero.h1">Crie prompts estruturados<br/>para <em>qualquer LLM</em></h1>
   <p class="hero-sub" data-i18n="hero.sub">
     Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para produção.<br/>
-    47 papéis, 4 modelos comprovados, totalmente offline.
+    91 papéis, 4 modelos comprovados, multi-idioma (PT / EN / ES), totalmente offline.
   </p>
   <div class="hero-buttons">
     <a href="#download" class="btn btn-primary">⬇ <span data-i18n="nav.cta">Download</span></a>
@@ -388,7 +401,7 @@
         <div class="step-number" data-i18n="step2">Passo 2</div>
         <div class="step-icon">🎭</div>
         <h3 data-i18n="how.s2.title">Escolha o(s) papel(is)</h3>
-        <p data-i18n="how.s2.desc">Busque entre 47 papéis profissionais. Selecione vários — habilidades e tom se mesclam automaticamente.</p>
+        <p data-i18n="how.s2.desc">Busque entre 91 papéis profissionais em 23 categorias. Selecione vários — habilidades e tom se mesclam automaticamente.</p>
       </div>
       <div class="step-card">
         <div class="step-number" data-i18n="step3">Passo 3</div>
@@ -473,8 +486,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">🎭</div>
-        <h3 data-i18n="f2.title">47 Papéis</h3>
-        <p data-i18n="f2.desc">Arquétipos profissionais em 12 categorias. Cada um traz habilidades, tom e perguntas de contexto.</p>
+        <h3 data-i18n="f2.title">91 Papéis</h3>
+        <p data-i18n="f2.desc">Arquétipos profissionais em 23 categorias. Cada um traz habilidades, tom e perguntas de contexto.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">🤝</div>
@@ -506,6 +519,11 @@
         <h3 data-i18n="f8.title">Multi-plataforma</h3>
         <p data-i18n="f8.desc">Binário universal para macOS, Windows amd64 e Linux. Papéis embutidos extraídos no primeiro uso.</p>
       </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌐</div>
+        <h3 data-i18n="f9.title">Multi-idioma</h3>
+        <p data-i18n="f9.desc">Interface e papéis em Português, Inglês e Espanhol. Detecção automática do idioma do sistema.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -516,55 +534,238 @@
 <section id="roles">
   <div class="container">
     <div class="section-label" data-i18n="roles.label">Biblioteca de papéis</div>
-    <h2 class="section-title" data-i18n="roles.title">47 papéis em 12 categorias</h2>
-    <p class="section-sub" data-i18n="roles.sub">Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto.</p>
+    <h2 class="section-title" data-i18n="roles.title">91 papéis em 23 categorias</h2>
+    <p class="section-sub" data-i18n="roles.sub">Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto. Traduzidos para PT, EN e ES.</p>
 
-    <div class="roles-grid">
-      <div class="role-chip"><span>🏛️</span> Arquiteto de Software</div>
-      <div class="role-chip"><span>🏛️</span> Arquiteto de Soluções</div>
-      <div class="role-chip"><span>🏛️</span> Arquiteto Cloud</div>
-      <div class="role-chip"><span>🏛️</span> Arquiteto Microsserviços</div>
-      <div class="role-chip"><span>⚙️</span> Engenheiro Go</div>
-      <div class="role-chip"><span>⚙️</span> Engenheiro Node.js</div>
-      <div class="role-chip"><span>⚙️</span> Engenheiro Python</div>
-      <div class="role-chip"><span>⚙️</span> Engenheiro Java</div>
-      <div class="role-chip"><span>🎨</span> Dev Frontend React</div>
-      <div class="role-chip"><span>🎨</span> Dev Frontend Vue</div>
-      <div class="role-chip"><span>📱</span> Dev Mobile React Native</div>
-      <div class="role-chip"><span>📱</span> Dev Mobile Flutter</div>
-      <div class="role-chip"><span>🚀</span> Engenheiro SRE</div>
-      <div class="role-chip"><span>🚀</span> Engenheiro de Plataforma</div>
-      <div class="role-chip"><span>🚀</span> Engenheiro Cloud AWS</div>
-      <div class="role-chip"><span>🗄️</span> DBA SQL</div>
-      <div class="role-chip"><span>🗄️</span> DBA NoSQL</div>
-      <div class="role-chip"><span>📊</span> Arquiteto de Dados</div>
-      <div class="role-chip"><span>📊</span> Engenheiro de Dados</div>
-      <div class="role-chip"><span>📊</span> Cientista de Dados</div>
-      <div class="role-chip"><span>📊</span> Engenheiro ML</div>
-      <div class="role-chip"><span>📊</span> Analista BI</div>
-      <div class="role-chip"><span>📊</span> Analytics Engineer</div>
-      <div class="role-chip"><span>✏️</span> UX Designer</div>
-      <div class="role-chip"><span>✏️</span> Product Designer</div>
-      <div class="role-chip"><span>📋</span> Scrum Master</div>
-      <div class="role-chip"><span>📋</span> Product Owner</div>
-      <div class="role-chip"><span>📋</span> Tech Lead</div>
-      <div class="role-chip"><span>📋</span> Product Manager</div>
-      <div class="role-chip"><span>📋</span> Business Analyst</div>
-      <div class="role-chip"><span>🔒</span> Engenheiro de Segurança</div>
-      <div class="role-chip"><span>🔒</span> Pentester</div>
-      <div class="role-chip"><span>🔒</span> Analista de Compliance</div>
-      <div class="role-chip"><span>🧪</span> QA Engineer</div>
-      <div class="role-chip"><span>🧪</span> QA Automation</div>
-      <div class="role-chip"><span>🧪</span> QA Lead</div>
-      <div class="role-chip"><span>📣</span> Especialista de Conteúdo</div>
-      <div class="role-chip"><span>📣</span> Copywriter</div>
-      <div class="role-chip"><span>📣</span> Especialista SEO</div>
-      <div class="role-chip"><span>📣</span> Analista de Growth</div>
-      <div class="role-chip"><span>📝</span> Technical Writer</div>
-      <div class="role-chip"><span>🏅</span> Especialista Go</div>
-      <div class="role-chip"><span>🏅</span> Especialista Java</div>
-      <div class="role-chip"><span>🏅</span> Especialista .NET</div>
-      <div class="role-chip"><span>🏅</span> Especialista Python</div>
+    <div class="roles-by-cat">
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--purple)">🏛️ Arquitetura <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Arquiteto Cloud</span>
+          <span class="role-chip">Arquiteto de Microsserviços</span>
+          <span class="role-chip">Arquiteto de Software</span>
+          <span class="role-chip">Arquiteto de Soluções</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--green)">⚙️ Backend <span class="roles-cat-count">8</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Desenvolvedor Backend Go</span>
+          <span class="role-chip">Desenvolvedor Backend Java</span>
+          <span class="role-chip">Desenvolvedor Backend Node.js</span>
+          <span class="role-chip">Desenvolvedor Backend Python</span>
+          <span class="role-chip">Especialista .NET (C#)</span>
+          <span class="role-chip">Especialista Go (Golang)</span>
+          <span class="role-chip">Especialista Java</span>
+          <span class="role-chip">Especialista Python</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--primary)">🗄️ Banco de Dados <span class="roles-cat-count">3</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Arquiteto de Dados</span>
+          <span class="role-chip">DBA NoSQL</span>
+          <span class="role-chip">DBA SQL</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--blue)">📊 Dados <span class="roles-cat-count">6</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Analytics Engineer</span>
+          <span class="role-chip">Analista de BI</span>
+          <span class="role-chip">Analista de Dados</span>
+          <span class="role-chip">Cientista de Dados</span>
+          <span class="role-chip">Engenheiro de Dados</span>
+          <span class="role-chip">Engenheiro de Machine Learning</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--red)">✏️ Design <span class="roles-cat-count">2</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Product Designer</span>
+          <span class="role-chip">UX Designer</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:#58f">🚀 DevOps <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Engenheiro Cloud AWS</span>
+          <span class="role-chip">Engenheiro DevOps</span>
+          <span class="role-chip">Engenheiro de Plataforma</span>
+          <span class="role-chip">Engenheiro SRE</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--muted)">⚖️ Direito <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Advogado Civilista</span>
+          <span class="role-chip">Advogado Criminalista</span>
+          <span class="role-chip">Advogado Empresarial</span>
+          <span class="role-chip">Advogado Trabalhista</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--muted)">📝 Documentação <span class="roles-cat-count">1</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Technical Writer</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--blue)">🎓 Educação <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Coordenador Pedagógico</span>
+          <span class="role-chip">Designer Instrucional</span>
+          <span class="role-chip">Professor do Ensino Fundamental</span>
+          <span class="role-chip">Professor do Ensino Médio</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--green)">🔧 Engenharia <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Engenheiro Civil</span>
+          <span class="role-chip">Engenheiro de Produção</span>
+          <span class="role-chip">Engenheiro Eletricista</span>
+          <span class="role-chip">Engenheiro Mecânico</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--primary)">💰 Finanças <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Analista Financeiro</span>
+          <span class="role-chip">Analista de Investimentos</span>
+          <span class="role-chip">Controller</span>
+          <span class="role-chip">Planejador Financeiro Pessoal</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--blue)">🎨 Frontend <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Desenvolvedor Frontend React</span>
+          <span class="role-chip">Desenvolvedor Frontend Vue</span>
+          <span class="role-chip">Desenvolvedor Mobile Flutter</span>
+          <span class="role-chip">Desenvolvedor Mobile React Native</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--purple)">📋 Gestão <span class="roles-cat-count">5</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Business Analyst</span>
+          <span class="role-chip">Product Manager</span>
+          <span class="role-chip">Product Owner</span>
+          <span class="role-chip">Scrum Master</span>
+          <span class="role-chip">Tech Lead</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--red)">📰 Jornalismo <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Correspondente Internacional</span>
+          <span class="role-chip">Editor-Chefe</span>
+          <span class="role-chip">Pauteiro</span>
+          <span class="role-chip">Repórter Investigativo</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--primary)">📣 Marketing <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Analista de Growth</span>
+          <span class="role-chip">Copywriter</span>
+          <span class="role-chip">Especialista em Marketing de Conteúdo</span>
+          <span class="role-chip">Especialista em SEO</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--red)">🩺 Medicina <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Cardiologista</span>
+          <span class="role-chip">Clínico Geral</span>
+          <span class="role-chip">Médico de Urgência e Emergência</span>
+          <span class="role-chip">Pediatra</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--purple)">🧠 Psicologia <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Neuropsicólogo</span>
+          <span class="role-chip">Psicólogo Clínico</span>
+          <span class="role-chip">Psicólogo Organizacional</span>
+          <span class="role-chip">Terapeuta Cognitivo-Comportamental</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--green)">🧪 QA <span class="roles-cat-count">3</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Engenheiro de QA</span>
+          <span class="role-chip">Especialista em Automação de Testes</span>
+          <span class="role-chip">QA Lead</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--blue)">👥 RH <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Analista de Folha e Benefícios</span>
+          <span class="role-chip">Especialista em DHO</span>
+          <span class="role-chip">HR Business Partner</span>
+          <span class="role-chip">Recrutador</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--red)">❤️ Saúde <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Educador Físico</span>
+          <span class="role-chip">Enfermeiro</span>
+          <span class="role-chip">Fisioterapeuta</span>
+          <span class="role-chip">Nutricionista</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--red)">🔒 Segurança <span class="roles-cat-count">3</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Analista de Compliance e Privacidade</span>
+          <span class="role-chip">Engenheiro de Segurança</span>
+          <span class="role-chip">Pentester / Red Team</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--green)">💼 Vendas <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Account Executive (SaaS)</span>
+          <span class="role-chip">Gerente de Vendas</span>
+          <span class="role-chip">SDR (Sales Development Representative)</span>
+          <span class="role-chip">Vendedor B2B</span>
+        </div>
+      </div>
+
+      <div class="roles-cat-block">
+        <div class="roles-cat-header" style="color:var(--primary)">🐾 Veterinária <span class="roles-cat-count">4</span></div>
+        <div class="roles-chip-list">
+          <span class="role-chip">Comportamentalista Animal</span>
+          <span class="role-chip">Veterinário Cirurgião</span>
+          <span class="role-chip">Veterinário Clínico de Pequenos Animais</span>
+          <span class="role-chip">Veterinário de Animais Silvestres</span>
+        </div>
+      </div>
     </div>
 
     <p style="margin-top:1.5rem; color:var(--muted); font-size:.875rem;" data-i18n="roles.custom">
@@ -635,7 +836,7 @@ const I18N = {
     'nav.cta':       'Download',
     'hero.badge':    'Sem IA no processo',
     'hero.h1':       'Crie prompts estruturados<br/>para <em>qualquer LLM</em>',
-    'hero.sub':      'Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para produção.<br/>47 papéis, 4 modelos comprovados, totalmente offline.',
+    'hero.sub':      'Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para produção.<br/>91 papéis, 4 modelos comprovados, multi-idioma (PT / EN / ES), totalmente offline.',
     'hero.github':   'Ver no GitHub',
     'terminal.selectModel': 'Selecionar modelo',
     'terminal.hint': '↑↓ navegar &nbsp; Enter selecionar &nbsp; i info &nbsp; q sair',
@@ -647,7 +848,7 @@ const I18N = {
     'how.s1.title':  'Selecione o modelo',
     'how.s1.desc':   'Escolha uma estrutura de prompt (RTF, RACE, RISEN ou CREATE) com base na complexidade da tarefa.',
     'how.s2.title':  'Escolha o(s) papel(is)',
-    'how.s2.desc':   'Busque entre 47 papéis profissionais. Selecione vários — habilidades e tom se mesclam automaticamente.',
+    'how.s2.desc':   'Busque entre 91 papéis profissionais em 23 categorias. Selecione vários — habilidades e tom se mesclam automaticamente.',
     'how.s3.title':  'Escreva a narrativa',
     'how.s3.desc':   'Descreva a tarefa em linguagem livre. Sem sintaxe especial. O motor mapeia para os campos do template.',
     'how.s4.title':  'Preencha as lacunas',
@@ -671,16 +872,17 @@ const I18N = {
     'features.title': 'Tudo que você precisa. Nada que não precisa.',
     'features.sub':   'CASTOR é uma ferramenta focada. Faz uma coisa excepcionalmente bem.',
     'f1.title': 'Zero IA',           'f1.desc': 'Motor de templates em Go puro. Sem chaves de API, sem chamadas de rede, sem custos ou limites.',
-    'f2.title': '47 Papéis',         'f2.desc': 'Arquétipos profissionais em 12 categorias. Cada um traz habilidades, tom e perguntas de contexto.',
+    'f2.title': '91 Papéis',         'f2.desc': 'Arquétipos profissionais em 23 categorias. Cada um traz habilidades, tom e perguntas de contexto.',
     'f3.title': 'Multi-papel',        'f3.desc': 'Combine múltiplos papéis. Habilidades e tom se fundem automaticamente em um prompt coeso.',
     'f4.title': 'Fases de execução', 'f4.desc': 'Estruture tarefas complexas em fases numeradas, cada uma com título e descrição detalhada.',
     'f5.title': 'Detecção de lacunas','f5.desc': 'Campos obrigatórios não cobertos pela narrativa viram perguntas interativas automaticamente.',
     'f6.title': 'Desktop + TUI',     'f6.desc': 'App nativo (Wails v2) ou wizard no terminal (bubbletea). Mesma lógica, sua preferência.',
     'f7.title': 'Extensível',        'f7.desc': 'Adicione papéis e modelos customizados como arquivos Markdown. Sem mudanças no código.',
     'f8.title': 'Multi-plataforma',  'f8.desc': 'Binário universal para macOS, Windows amd64 e Linux. Papéis embutidos extraídos no primeiro uso.',
+    'f9.title': 'Multi-idioma',      'f9.desc': 'Interface e papéis em Português, Inglês e Espanhol. Detecção automática do idioma do sistema.',
     'roles.label': 'Biblioteca de papéis',
-    'roles.title': '47 papéis em 12 categorias',
-    'roles.sub':   'Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto.',
+    'roles.title': '91 papéis em 23 categorias',
+    'roles.sub':   'Cada papel traz descrição profissional, habilidades, tom de comunicação e perguntas de contexto. Traduzidos para PT, EN e ES.',
     'roles.custom':'Adicione seus próprios papéis colocando arquivos <code>.md</code> em <code>~/.castorprompt/roles/</code>.',
     'dl.label':  'Download',
     'dl.title':  'Baixe o CASTOR Builder',
@@ -697,7 +899,7 @@ const I18N = {
     'nav.cta':       'Download',
     'hero.badge':    'No AI in the loop',
     'hero.h1':       'Build structured prompts<br/>for <em>any LLM</em>',
-    'hero.sub':      'Pick a role. Describe your task. Get a production-ready prompt.<br/>47 roles, 4 proven models, fully offline.',
+    'hero.sub':      'Pick a role. Describe your task. Get a production-ready prompt.<br/>91 roles, 4 proven models, multi-language (PT / EN / ES), fully offline.',
     'hero.github':   'View on GitHub',
     'terminal.selectModel': 'Select model',
     'terminal.hint': '↑↓ navigate &nbsp; Enter select &nbsp; i info &nbsp; q quit',
@@ -709,7 +911,7 @@ const I18N = {
     'how.s1.title':  'Select a model',
     'how.s1.desc':   'Choose a prompt structure (RTF, RACE, RISEN or CREATE) based on the complexity of your task.',
     'how.s2.title':  'Pick role(s)',
-    'how.s2.desc':   'Search 47 professional roles. Select multiple — their skills and tone merge automatically.',
+    'how.s2.desc':   'Search 91 professional roles across 23 categories. Select multiple — their skills and tone merge automatically.',
     'how.s3.title':  'Write your narrative',
     'how.s3.desc':   'Describe your task in plain language. No special syntax. The engine maps it to the template fields.',
     'how.s4.title':  'Fill the gaps',
@@ -732,17 +934,18 @@ const I18N = {
     'features.label': 'Features',
     'features.title': 'Everything you need. Nothing you don\'t.',
     'features.sub':   'CASTOR is a focused tool. It does one thing exceptionally well.',
-    'f1.title': 'Zero AI',          'f1.desc': 'Pure Go template engine. No API keys, no network calls, no costs, no rate limits.',
-    'f2.title': '47 Roles',         'f2.desc': 'Professional archetypes across 12 categories. Each carries skills, tone, and context questions.',
-    'f3.title': 'Multi-role',       'f3.desc': 'Combine multiple roles. Their skills and tone instructions merge into one cohesive prompt.',
-    'f4.title': 'Execution phases', 'f4.desc': 'Structure complex tasks into numbered phases, each with a title and detailed description.',
-    'f5.title': 'Gap detection',    'f5.desc': 'Required fields not covered by the narrative automatically become interactive questions.',
-    'f6.title': 'Desktop + TUI',    'f6.desc': 'Native desktop app (Wails v2) or terminal wizard (bubbletea). Same logic, your preference.',
-    'f7.title': 'Extensible',       'f7.desc': 'Add custom roles and models as plain Markdown files. No code changes needed.',
-    'f8.title': 'Cross-platform',   'f8.desc': 'macOS universal binary, Windows amd64, Linux. Bundled roles extracted on first launch.',
+    'f1.title': 'Zero AI',           'f1.desc': 'Pure Go template engine. No API keys, no network calls, no costs, no rate limits.',
+    'f2.title': '91 Roles',          'f2.desc': 'Professional archetypes across 23 categories. Each carries skills, tone, and context questions.',
+    'f3.title': 'Multi-role',        'f3.desc': 'Combine multiple roles. Their skills and tone instructions merge into one cohesive prompt.',
+    'f4.title': 'Execution phases',  'f4.desc': 'Structure complex tasks into numbered phases, each with a title and detailed description.',
+    'f5.title': 'Gap detection',     'f5.desc': 'Required fields not covered by the narrative automatically become interactive questions.',
+    'f6.title': 'Desktop + TUI',     'f6.desc': 'Native desktop app (Wails v2) or terminal wizard (bubbletea). Same logic, your preference.',
+    'f7.title': 'Extensible',        'f7.desc': 'Add custom roles and models as plain Markdown files. No code changes needed.',
+    'f8.title': 'Cross-platform',    'f8.desc': 'macOS universal binary, Windows amd64, Linux. Bundled roles extracted on first launch.',
+    'f9.title': 'Multi-language',    'f9.desc': 'Interface and roles in Portuguese, English and Spanish. Automatic OS language detection.',
     'roles.label': 'Role library',
-    'roles.title': '47 roles across 12 categories',
-    'roles.sub':   'Each role carries a professional description, skill set, communication tone, and context-filling questions.',
+    'roles.title': '91 roles across 23 categories',
+    'roles.sub':   'Each role carries a professional description, skill set, communication tone, and context-filling questions. Translated into PT, EN and ES.',
     'roles.custom':'Add your own roles by dropping <code>.md</code> files in <code>~/.castorprompt/roles/</code>.',
     'dl.label':  'Download',
     'dl.title':  'Get CASTOR Builder',
@@ -750,6 +953,69 @@ const I18N = {
     'dl.source': 'Or build from source:',
     'footer.made':    'Made with',
     'footer.tagline': 'Prompt engineering without the AI',
+  },
+  es: {
+    'nav.how':       'Cómo funciona',
+    'nav.models':    'Modelos',
+    'nav.roles':     'Roles',
+    'nav.download':  'Descargar',
+    'nav.cta':       'Descargar',
+    'hero.badge':    'Sin IA en el proceso',
+    'hero.h1':       'Crea prompts estructurados<br/>para <em>cualquier LLM</em>',
+    'hero.sub':      'Elige un rol. Describe tu tarea. Obtén un prompt listo para producción.<br/>91 roles, 4 modelos comprobados, multi-idioma (PT / EN / ES), totalmente offline.',
+    'hero.github':   'Ver en GitHub',
+    'terminal.selectModel': 'Seleccionar modelo',
+    'terminal.hint': '↑↓ navegar &nbsp; Enter seleccionar &nbsp; i info &nbsp; q salir',
+    'how.label':     'Cómo funciona',
+    'how.title':     'Seis pasos para un prompt estructurado',
+    'how.sub':       'Sin configuración. Sin claves API. Un wizard que extrae lo importante y llena los vacíos.',
+    'step':  'Paso 1', 'step2': 'Paso 2', 'step3': 'Paso 3',
+    'step4': 'Paso 4', 'step5': 'Paso 5', 'step6': 'Paso 6',
+    'how.s1.title':  'Selecciona el modelo',
+    'how.s1.desc':   'Elige una estructura de prompt (RTF, RACE, RISEN o CREATE) según la complejidad de la tarea.',
+    'how.s2.title':  'Elige rol(es)',
+    'how.s2.desc':   'Busca entre 91 roles profesionales en 23 categorías. Selecciona varios — habilidades y tono se combinan automáticamente.',
+    'how.s3.title':  'Escribe la narrativa',
+    'how.s3.desc':   'Describe tu tarea en lenguaje libre. Sin sintaxis especial. El motor mapea a los campos del template.',
+    'how.s4.title':  'Llena los vacíos',
+    'how.s4.desc':   'Campos no completados automáticamente se vuelven preguntas interactivas. Los obligatorios son señalados.',
+    'how.s5.title':  'Define fases (opcional)',
+    'how.s5.desc':   'Estructura la ejecución en fases numeradas. Cada una recibe título y descripción inyectados en el prompt.',
+    'how.s6.title':  'Prompt guardado',
+    'how.s6.desc':   'Tu prompt estructurado en <code>.md</code> se guarda en <code>prompts/</code>, listo para pegar en cualquier LLM.',
+    'models.label':  'Modelos de prompt',
+    'models.title':  'Cuatro estructuras. Un encaje perfecto.',
+    'models.sub':    'Cada modelo es un framework comprobado para estructurar instrucciones a LLMs. Elige el que mejor se adapte a la complejidad de tu tarea.',
+    'models.rtf.sub':    'Simple y directo',
+    'models.rtf.desc':   'Ideal para tareas enfocadas con salida única, cuando sabes exactamente lo que quieres.',
+    'models.race.sub':   'Contexto rico',
+    'models.race.desc':  'Ideal para briefs complejos donde el contexto y la claridad del entregable son esenciales.',
+    'models.risen.sub':  'Razonamiento paso a paso',
+    'models.risen.desc': 'Ideal para tareas largas con restricciones explícitas y razonamiento multi-etapa.',
+    'models.create.sub':  'Salida creativa',
+    'models.create.desc': 'Ideal para creación de contenido con definición de audiencia y control de tono.',
+    'features.label': 'Funcionalidades',
+    'features.title': 'Todo lo que necesitas. Nada que no necesitas.',
+    'features.sub':   'CASTOR es una herramienta enfocada. Hace una cosa excepcionalmente bien.',
+    'f1.title': 'Cero IA',            'f1.desc': 'Motor de templates en Go puro. Sin claves API, sin llamadas de red, sin costos ni límites.',
+    'f2.title': '91 Roles',           'f2.desc': 'Arquetipos profesionales en 23 categorías. Cada uno aporta habilidades, tono y preguntas de contexto.',
+    'f3.title': 'Multi-rol',          'f3.desc': 'Combina múltiples roles. Sus habilidades e instrucciones de tono se fusionan en un prompt cohesivo.',
+    'f4.title': 'Fases de ejecución', 'f4.desc': 'Estructura tareas complejas en fases numeradas, cada una con título y descripción detallada.',
+    'f5.title': 'Detección de vacíos','f5.desc': 'Los campos obligatorios no cubiertos por la narrativa se convierten automáticamente en preguntas interactivas.',
+    'f6.title': 'Desktop + TUI',      'f6.desc': 'App nativa (Wails v2) o wizard en la terminal (bubbletea). Misma lógica, tu preferencia.',
+    'f7.title': 'Extensible',         'f7.desc': 'Agrega roles y modelos personalizados como archivos Markdown. Sin cambios en el código.',
+    'f8.title': 'Multi-plataforma',   'f8.desc': 'Binario universal macOS, Windows amd64, Linux. Roles incluidos extraídos en el primer uso.',
+    'f9.title': 'Multi-idioma',       'f9.desc': 'Interfaz y roles en Portugués, Inglés y Español. Detección automática del idioma del sistema.',
+    'roles.label': 'Biblioteca de roles',
+    'roles.title': '91 roles en 23 categorías',
+    'roles.sub':   'Cada rol incluye descripción profesional, habilidades, tono de comunicación y preguntas de contexto. Traducidos a PT, EN y ES.',
+    'roles.custom':'Agrega tus propios roles colocando archivos <code>.md</code> en <code>~/.castorprompt/roles/</code>.',
+    'dl.label':  'Descargar',
+    'dl.title':  'Descarga CASTOR Builder',
+    'dl.sub':    'Binarios nativos para cada plataforma. Sin dependencias de runtime.',
+    'dl.source': 'O compila desde el código fuente:',
+    'footer.made':    'Hecho con',
+    'footer.tagline': 'Ingeniería de prompts sin IA',
   }
 };
 
@@ -759,10 +1025,27 @@ function setLang(lang) {
   currentLang = lang;
   const dict = I18N[lang];
 
-  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
-  document.title = lang === 'pt'
-    ? 'CASTOR Builder — Prompts estruturados para LLMs, sem IA'
-    : 'CASTOR Builder — Structured prompts for LLMs, no AI required';
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : (lang === 'es' ? 'es' : 'en');
+
+  if (lang === 'pt') {
+    document.title = 'CASTOR Builder — Prompts estruturados para LLMs, sem IA';
+    document.querySelector('meta[name="description"]').setAttribute('content',
+      'Escolha um papel. Descreva sua tarefa. Gere um prompt pronto para qualquer LLM. 91 papéis, 4 modelos, multi-idioma (PT/EN/ES), totalmente offline.');
+    document.querySelector('meta[property="og:description"]').setAttribute('content',
+      'Prompts estruturados para LLMs — sem IA no processo. 91 papéis em 23 categorias.');
+  } else if (lang === 'es') {
+    document.title = 'CASTOR Builder — Prompts estructurados para LLMs, sin IA';
+    document.querySelector('meta[name="description"]').setAttribute('content',
+      'Elige un rol. Describe tu tarea. Genera un prompt listo para cualquier LLM. 91 roles, 4 modelos, multi-idioma (PT/EN/ES), totalmente offline.');
+    document.querySelector('meta[property="og:description"]').setAttribute('content',
+      'Prompts estructurados para LLMs — sin IA en el proceso. 91 roles en 23 categorías.');
+  } else {
+    document.title = 'CASTOR Builder — Structured prompts for LLMs, no AI required';
+    document.querySelector('meta[name="description"]').setAttribute('content',
+      'Pick a role. Describe your task. Generate a production-ready prompt for any LLM. 91 roles, 4 models, multi-language (PT/EN/ES), fully offline.');
+    document.querySelector('meta[property="og:description"]').setAttribute('content',
+      'Structured prompts for LLMs — no AI in the process. 91 roles across 23 categories.');
+  }
 
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -773,15 +1056,15 @@ function setLang(lang) {
 
   document.getElementById('btn-pt').classList.toggle('active', lang === 'pt');
   document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-es').classList.toggle('active', lang === 'es');
 
   localStorage.setItem('castor-lang', lang);
 }
 
-// init: use saved preference, else browser language, else pt
 (function () {
   const saved = localStorage.getItem('castor-lang');
   const browser = (navigator.language || 'pt').toLowerCase();
-  const lang = saved || (browser.startsWith('pt') ? 'pt' : 'en');
+  const lang = saved || (browser.startsWith('pt') ? 'pt' : (browser.startsWith('es') ? 'es' : 'en'));
   setLang(lang);
 })();
 </script>
