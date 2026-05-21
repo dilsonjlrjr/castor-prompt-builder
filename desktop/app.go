@@ -7,10 +7,19 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/engine"
 	"github.com/dilsonrabelo/castor-prompt-builder/pkg/parser"
+)
+
+const (
+	promptFileExt         = ".md"
+	promptTimestampFormat = "20060102_150405"
+	promptDisplayFormat   = "2006-01-02 15:04"
+	defaultPromptTitle    = "Sem título"
 )
 
 //go:embed bundled
@@ -233,6 +242,37 @@ var autoMapped = map[string]bool{
 	"task": true, "input": true,
 }
 
+// ---- Lookups internos ----
+
+func (a *App) findModel(id string) *parser.Model {
+	for _, m := range a.models {
+		if m.ID == id {
+			return m
+		}
+	}
+	return nil
+}
+
+func (a *App) findRole(id string) *parser.Role {
+	for _, r := range a.roles {
+		if r.ID == id {
+			return r
+		}
+	}
+	return nil
+}
+
+// resolveRoles devolve, na ordem dos IDs, os papéis encontrados (ignora IDs inválidos).
+func (a *App) resolveRoles(ids []string) []*parser.Role {
+	out := make([]*parser.Role, 0, len(ids))
+	for _, id := range ids {
+		if r := a.findRole(id); r != nil {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
 // ---- Métodos expostos ao frontend ----
 
 func (a *App) GetModels() []ModelDTO {
@@ -274,28 +314,18 @@ func (a *App) GetRoles() []RoleDTO {
 }
 
 func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
-	// localiza modelo
-	var modelo *parser.Model
-	for _, m := range a.models {
-		if m.ID == req.ModelID {
-			modelo = m
-			break
-		}
-	}
+	modelo := a.findModel(req.ModelID)
 	if modelo == nil {
 		return BuildResultDTO{Erro: "modelo não encontrado: " + req.ModelID}
 	}
 
-	// combina papéis selecionados
-	var nomes, descs []string
-	for _, rid := range req.RoleIDs {
-		for _, r := range a.roles {
-			if r.ID == rid {
-				nomes = append(nomes, r.Nome)
-				descs = append(descs, r.Descricao)
-				break
-			}
-		}
+	selected := a.resolveRoles(req.RoleIDs)
+
+	nomes := make([]string, 0, len(selected))
+	descs := make([]string, 0, len(selected))
+	for _, r := range selected {
+		nomes = append(nomes, r.Nome)
+		descs = append(descs, r.Descricao)
 	}
 	roleNome := strings.Join(nomes, " + ")
 	if roleNome == "" {
@@ -360,19 +390,14 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 		}
 	}
 
-	// habilidades dos papéis selecionados (dedup)
+	// habilidades dos papéis selecionados (dedup, preserva ordem de descoberta)
 	seenH := map[string]bool{}
 	var habs []string
-	for _, rid := range req.RoleIDs {
-		for _, r := range a.roles {
-			if r.ID == rid {
-				for _, h := range r.Habilidades {
-					if !seenH[h] {
-						seenH[h] = true
-						habs = append(habs, h)
-					}
-				}
-				break
+	for _, r := range selected {
+		for _, h := range r.Habilidades {
+			if !seenH[h] {
+				seenH[h] = true
+				habs = append(habs, h)
 			}
 		}
 	}
@@ -385,12 +410,9 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 
 	// tom dos papéis
 	var toms []string
-	for _, rid := range req.RoleIDs {
-		for _, r := range a.roles {
-			if r.ID == rid && r.Tom != "" {
-				toms = append(toms, r.Nome+": "+r.Tom)
-				break
-			}
+	for _, r := range selected {
+		if r.Tom != "" {
+			toms = append(toms, r.Nome+": "+r.Tom)
 		}
 	}
 	if len(toms) > 0 {
@@ -423,4 +445,117 @@ func (a *App) BuildPrompt(req BuildRequestDTO) BuildResultDTO {
 	}
 
 	return BuildResultDTO{Conteudo: rendered}
+}
+
+// ---- Gerenciamento de prompts salvos ----
+
+// PromptMetaDTO representa um prompt salvo (listagem).
+type PromptMetaDTO struct {
+	ID        string `json:"id"`        // nome do arquivo sem extensao
+	Titulo    string `json:"titulo"`    // extraido do conteudo (# Prompt — ...)
+	Data      string `json:"data"`      // data de criacao
+}
+
+// PromptDTO representa um prompt completo.
+type PromptDTO struct {
+	ID        string `json:"id"`
+	Conteudo  string `json:"conteudo"`
+}
+
+func (a *App) promptsDir() string {
+	base, _ := userDataDir()
+	dir := filepath.Join(base, "prompts")
+	_ = os.MkdirAll(dir, 0o755)
+	return dir
+}
+
+func (a *App) promptPath(id string) string {
+	return filepath.Join(a.promptsDir(), id+promptFileExt)
+}
+
+func writePrompt(path, conteudo string) {
+	_ = os.WriteFile(path, []byte(conteudo), 0o644)
+}
+
+// SavePrompt grava o conteúdo em ~/.castorprompt/prompts/<timestamp>.md
+func (a *App) SavePrompt(conteudo string) PromptMetaDTO {
+	now := time.Now()
+	id := now.Format(promptTimestampFormat)
+	writePrompt(a.promptPath(id), conteudo)
+	return PromptMetaDTO{
+		ID:     id,
+		Titulo: extrairTitulo(conteudo),
+		Data:   now.Format(promptDisplayFormat),
+	}
+}
+
+// ListPrompts lista prompts salvos ordenados por data de modificação (mais recentes primeiro).
+func (a *App) ListPrompts() []PromptMetaDTO {
+	dir := a.promptsDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return []PromptMetaDTO{}
+	}
+
+	type item struct {
+		meta    PromptMetaDTO
+		modTime time.Time
+	}
+	items := make([]item, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), promptFileExt) {
+			continue
+		}
+		data, _ := os.ReadFile(filepath.Join(dir, e.Name()))
+		info, _ := e.Info()
+		mt := time.Time{}
+		dataStr := ""
+		if info != nil {
+			mt = info.ModTime()
+			dataStr = mt.Format(promptDisplayFormat)
+		}
+		items = append(items, item{
+			meta: PromptMetaDTO{
+				ID:     strings.TrimSuffix(e.Name(), promptFileExt),
+				Titulo: extrairTitulo(string(data)),
+				Data:   dataStr,
+			},
+			modTime: mt,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].modTime.After(items[j].modTime) })
+
+	out := make([]PromptMetaDTO, len(items))
+	for i, it := range items {
+		out[i] = it.meta
+	}
+	return out
+}
+
+// GetPrompt retorna o conteúdo completo de um prompt.
+func (a *App) GetPrompt(id string) PromptDTO {
+	data, _ := os.ReadFile(a.promptPath(id))
+	return PromptDTO{ID: id, Conteudo: string(data)}
+}
+
+// UpdatePrompt sobrescreve o conteúdo de um prompt existente.
+func (a *App) UpdatePrompt(id string, conteudo string) {
+	writePrompt(a.promptPath(id), conteudo)
+}
+
+// DeletePrompt remove um prompt salvo.
+func (a *App) DeletePrompt(id string) {
+	_ = os.Remove(a.promptPath(id))
+}
+
+// extrairTitulo retorna o texto do primeiro heading H1 do conteúdo,
+// ou um título padrão quando ausente.
+func extrairTitulo(conteudo string) string {
+	for _, l := range strings.SplitN(conteudo, "\n", 3) {
+		l = strings.TrimSpace(l)
+		if strings.HasPrefix(l, "# ") {
+			return strings.TrimPrefix(l, "# ")
+		}
+	}
+	return defaultPromptTitle
 }
