@@ -390,27 +390,12 @@
     return { gap: sec.gaps[selGapIdx], sectionTitle: sec.title, sectionKind: sec.kind }
   })()
 
-  $: totalCount = (() => {
-    let n = 0
-    for (const s of visibleSections) {
-      if (!collapsedSections[s.title]) n += s.gaps.length
-    }
-    return n
-  })()
-
-  $: answeredCount = (() => {
-    let n = 0
-    for (const s of visibleSections) {
-      if (!collapsedSections[s.title]) n += s.gaps.filter(g => g.answer).length
-    }
-    return n
-  })()
-
-  $: rawTotal = (() => {
-    let n = 0
-    for (const s of visibleSections) n += s.gaps.length
-    return n
-  })()
+  // Contagens consideram TODOS os gaps — o estado de colapso é só visual e
+  // não pode alterar validação ou indicador de progresso real.
+  $: totalCount = visibleSections.reduce((n, s) => n + s.gaps.length, 0)
+  $: answeredCount = visibleSections.reduce(
+    (n, s) => n + s.gaps.filter(g => g.answer).length, 0)
+  $: rawTotal = totalCount
 
   // helper functions
   function cycleSelectOption(gap: Gap) {
@@ -511,15 +496,10 @@
     }
   }
 
-  $: hasUnansweredRequired = (() => {
-    for (const s of visibleSections) {
-      if (collapsedSections[s.title]) continue
-      for (const g of s.gaps) {
-        if (g.obrigatorio && !g.answer.trim()) return true
-      }
-    }
-    return false
-  })()
+  // Valida obrigatórias em TODAS as seções (mesmo colapsadas) —
+  // o estado de colapso é visual e não pode mascarar campos pendentes.
+  $: hasUnansweredRequired = visibleSections.some(
+    s => s.gaps.some(g => g.obrigatorio && !g.answer.trim()))
 
   function skipAll() {
     if (hasUnansweredRequired) return
