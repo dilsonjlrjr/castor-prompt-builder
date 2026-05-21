@@ -17,13 +17,10 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title:            "CASTOR Builder",
-		Width:            960,
-		Height:           640,
-		MinWidth:         800,
-		MinHeight:        560,
-		MaxWidth:         960,
-		MaxHeight:        640,
-		DisableResize:    true,
+		Width:            1180,
+		Height:           780,
+		MinWidth:         1000,
+		MinHeight:        700,
 		BackgroundColour: &options.RGBA{R: 15, G: 15, B: 20, A: 1},
 		AssetServer: &assetserver.Options{
 			Assets: assets,

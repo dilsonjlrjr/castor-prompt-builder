@@ -1065,8 +1065,8 @@
         Prompts salvos
       </button>
 
-      <!-- stepper vertical -->
-      <nav class="w-full flex flex-col gap-1">
+      <!-- stepper vertical (consome espaço sobrando; scrolla se janela for baixa) -->
+      <nav class="w-full flex-1 min-h-0 overflow-y-auto flex flex-col gap-1">
         {#each STEPS as step, i}
           {@const done    = i < stepIndex}
           {@const active  = i === stepIndex}
@@ -1096,8 +1096,8 @@
         {/each}
       </nav>
 
-      <!-- tutorial + versão -->
-      <div class="mt-auto flex flex-col items-center gap-4 w-full pt-6">
+      <!-- tutorial + versão (sempre fixos no rodapé da sidebar) -->
+      <div class="flex-shrink-0 flex flex-col items-center gap-4 w-full pt-6">
         <button on:click={() => { tutorialSlide = 0; showTutorial = true }}
           class="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl
                  bg-[#f5a623] text-black text-[12px] font-bold tracking-wide
