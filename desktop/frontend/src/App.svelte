@@ -4,6 +4,13 @@
   import { cubicOut } from 'svelte/easing'
   import { GetModels, GetRoles, BuildPrompt, IsFirstRun, ValidateAll, SavePrompt, ListPrompts, DeletePrompt, GetPrompt } from '../wailsjs/go/main/App.js'
   import { main } from '../wailsjs/go/models'
+  import { t, lang, setLang, LANG_META, type Lang } from './lib/i18n'
+
+  // Pré-monta as opções de idioma para iterar no template sem cast TS.
+  const LANG_OPTIONS: { code: Lang; flag: string; label: string }[] =
+    (Object.keys(LANG_META) as Lang[]).map(code => ({
+      code, flag: LANG_META[code].flag, label: LANG_META[code].nativeLabel,
+    }))
 
   // ---- tipos ----
   type Campo  = { id: string; label: string; tipo: string; obrigatorio: boolean; opcoes?: string[] }
@@ -60,77 +67,15 @@
   let showTutorial  = false
   let tutorialSlide = 0
 
+  // Estrutura visual fixa; textos resolvidos via i18n (chave `tutorial.slides.<key>`).
   const TUTORIAL_SLIDES = [
-    {
-      step:     0,
-      icon:     '🗺️',
-      accent:   '#f5a623',
-      title:    'Como funciona o CASTOR',
-      subtitle: 'Visão geral · 6 etapas',
-      desc:     'O CASTOR guia você por um wizard simples. Cada etapa adiciona uma camada de contexto — no final, um prompt estruturado pronto para qualquer IA.',
-      tip:      'Você pode voltar a etapas anteriores a qualquer momento.',
-      preview:  'pipeline',
-    },
-    {
-      step:     1,
-      icon:     '📐',
-      accent:   '#f5a623',
-      title:    'Escolha o Modelo',
-      subtitle: 'Passo 1 de 6',
-      desc:     'O modelo define a estrutura e a lógica do prompt. Cada um serve um tipo diferente de tarefa — escolha o que melhor se encaixa no seu objetivo.',
-      tip:      'Na dúvida, RACE é o mais versátil para a maioria dos casos.',
-      preview:  'models',
-    },
-    {
-      step:     2,
-      icon:     '🎭',
-      accent:   '#a371f7',
-      title:    'Selecione os Papéis',
-      subtitle: 'Passo 2 de 6',
-      desc:     'O papel define quem a IA deve "ser" para responder sua tarefa. Você pode combinar vários — o prompt incorpora as habilidades de todos.',
-      tip:      'Combinar papéis complementares (ex: Arquiteto + DevOps) enriquece muito o resultado.',
-      preview:  'roles',
-    },
-    {
-      step:     3,
-      icon:     '✍️',
-      accent:   '#58a6ff',
-      title:    'Descreva sua Tarefa',
-      subtitle: 'Passo 3 de 6',
-      desc:     'Escreva naturalmente, como explicaria a um colega. Sem formatação especial — o CASTOR distribui o contexto automaticamente nos campos certos.',
-      tip:      'Quanto mais contexto aqui, menos gaps serão perguntados depois.',
-      preview:  'narrative',
-    },
-    {
-      step:     4,
-      icon:     '💬',
-      accent:   '#3fb950',
-      title:    'Preencha o Contexto',
-      subtitle: 'Passo 4 de 6',
-      desc:     'O CASTOR identifica o que falta e faz perguntas direcionadas. Algumas vêm do modelo, outras dos papéis — e cada pergunta mostra de onde veio.',
-      tip:      'Campos opcionais podem ser pulados — aparecem no prompt como lacunas a considerar.',
-      preview:  'gaps',
-    },
-    {
-      step:     5,
-      icon:     '📋',
-      accent:   '#e06c75',
-      title:    'Defina as Fases',
-      subtitle: 'Passo 5 de 6 · opcional',
-      desc:     'Para tarefas complexas, divida a execução em etapas sequenciais. Cada fase tem um título e uma descrição do que deve acontecer naquele momento.',
-      tip:      'Fases são ótimas para projetos de múltiplas entregas ou raciocínio encadeado.',
-      preview:  'phases',
-    },
-    {
-      step:     6,
-      icon:     '🚀',
-      accent:   '#f5a623',
-      title:    'Prompt Pronto!',
-      subtitle: 'Passo 6 de 6',
-      desc:     'O CASTOR monta o prompt com modelo, papéis, habilidades, contexto e fases — estruturado e pronto para usar em qualquer IA.',
-      tip:      'Copie e cole diretamente no ChatGPT, Claude, Gemini ou qualquer outra IA.',
-      preview:  'result',
-    },
+    { step: 0, icon: '🗺️', accent: '#f5a623', key: 'overview',  preview: 'pipeline'  },
+    { step: 1, icon: '📐', accent: '#f5a623', key: 'model',     preview: 'models'    },
+    { step: 2, icon: '🎭', accent: '#a371f7', key: 'roles',     preview: 'roles'     },
+    { step: 3, icon: '✍️', accent: '#58a6ff', key: 'narrative', preview: 'narrative' },
+    { step: 4, icon: '💬', accent: '#3fb950', key: 'gaps',      preview: 'gaps'      },
+    { step: 5, icon: '📋', accent: '#e06c75', key: 'phases',    preview: 'phases'    },
+    { step: 6, icon: '🚀', accent: '#f5a623', key: 'result',    preview: 'result'    },
   ]
 
   function nextTutorial() {
@@ -232,13 +177,14 @@
   let hasSavedState = false
 
   // ---- stepper ----
-  const STEPS: { id: Screen; label: string }[] = [
-    { id: 'model',     label: 'Modelo'    },
-    { id: 'role',      label: 'Papel'     },
-    { id: 'narrative', label: 'Tarefa'    },
-    { id: 'gap',       label: 'Contexto'  },
-    { id: 'phase',     label: 'Fases'     },
-    { id: 'result',    label: 'Resultado' },
+  // Labels do stepper são traduzidos via `$t('steps.<id>')` no template.
+  const STEPS: { id: Screen }[] = [
+    { id: 'model'     },
+    { id: 'role'      },
+    { id: 'narrative' },
+    { id: 'gap'       },
+    { id: 'phase'     },
+    { id: 'result'    },
   ]
   $: stepIndex = STEPS.findIndex(s => s.id === screen)
 
@@ -270,21 +216,11 @@
     rh: '👥', engenharia: '🔧', psicologia: '🧠',
     saude: '❤️', vendas: '💼',
   }
-  const CAT_LABEL: Record<string, string> = {
-    arquitetura: 'Arquitetura',   frontend:  'Frontend & Mobile',
-    backend:     'Backend',       devops:    'DevOps & Cloud',
-    banco:       'Banco de Dados',dados:     'Dados & IA',
-    gestao:      'Gestão',        seguranca: 'Segurança',
-    design:      'Design',        marketing: 'Marketing',
-    qa:          'QA & Testes',   documentacao: 'Documentação',
-    jornalismo:  'Jornalismo',    direito:   'Direito',
-    medicina:    'Medicina',      veterinaria: 'Medicina Veterinária',
-    educacao:    'Educação',      financas:  'Finanças',
-    rh:          'Recursos Humanos', engenharia: 'Engenharia',
-    psicologia:  'Psicologia',    saude:     'Saúde',
-    vendas:      'Vendas',
+  // catLabel agora vem do dicionário de idioma — fallback para o próprio slug.
+  function catLabel(cat: string): string {
+    const v = $t('categories.' + cat)
+    return v === 'categories.' + cat ? cat : v
   }
-  function catLabel(cat: string) { return CAT_LABEL[cat] ?? cat }
   function catIcon(cat: string)  { return CAT_ICON[cat]  ?? '📁' }
 
   // modelo: badge colorida por ID
@@ -354,7 +290,8 @@
     }))
     modelGaps.sort(byGapPriority)
     if (modelGaps.length > 0) {
-      sections.push({ title: 'Contexto do Modelo (' + (selectedModel?.nome ?? '') + ')', kind: 'model', gaps: modelGaps })
+      // title guarda só o nome do modelo; o cabeçalho traduzível é montado no template
+      sections.push({ title: selectedModel?.nome ?? '', kind: 'model', gaps: modelGaps })
     }
 
     // 2. Gaps de papel — uma seção por papel
@@ -599,19 +536,20 @@
     ? promptList.filter(p => (p.titulo || '').toLowerCase().includes(promptSearch.toLowerCase()))
     : promptList
 
-  // Converte "2026-05-21 11:53" em "há 5 min", "há 2 h", "há 3 d" ou data absoluta.
-  function relativeDate(d: string): string {
+  // Converte "2026-05-21 11:53" em "agora / há 5 min / há 2 h / há 3 d" no idioma ativo.
+  // Reativa: depende de `$t` — recria quando o idioma muda.
+  $: relativeDate = (d: string): string => {
     if (!d) return ''
     const ts = Date.parse(d.replace(' ', 'T'))
     if (isNaN(ts)) return d
     const diff = Date.now() - ts
     const min = Math.floor(diff / 60_000)
-    if (min < 1) return 'agora'
-    if (min < 60) return `há ${min} min`
+    if (min < 1) return $t('relativeDate.now')
+    if (min < 60) return $t('relativeDate.minute', { n: min })
     const h = Math.floor(min / 60)
-    if (h < 24) return `há ${h} h`
+    if (h < 24) return $t('relativeDate.hour', { n: h })
     const days = Math.floor(h / 24)
-    if (days < 7) return `há ${days} d`
+    if (days < 7) return $t('relativeDate.day', { n: days })
     return d
   }
 
@@ -657,9 +595,13 @@
         <!-- header -->
         <div class="px-8 pt-8 pb-4">
           <p class="text-[10px] tracking-[0.25em] uppercase text-[#f5a623] font-semibold mb-1">
-            {validationDone ? (validationErrors.length === 0 ? 'Tudo certo!' : `${validationErrors.length} problema${validationErrors.length > 1 ? 's' : ''} encontrado${validationErrors.length > 1 ? 's' : ''}`) : 'Verificando arquivos...'}
+            {validationDone
+              ? (validationErrors.length === 0
+                   ? $t('validation.statusOk')
+                   : $t('validation.statusErrors', { n: validationErrors.length, s: validationErrors.length > 1 ? 's' : '' }))
+              : $t('validation.statusRunning')}
           </p>
-          <h2 class="text-lg font-bold text-[#e8eaf0]">Validação de arquivos</h2>
+          <h2 class="text-lg font-bold text-[#e8eaf0]">{$t('validation.title')}</h2>
         </div>
 
         <!-- gauge -->
@@ -670,12 +612,12 @@
                         background:{validationDone && validationErrors.length > 0 ? '#f85149' : '#f5a623'}"></div>
           </div>
           <div class="flex justify-between mt-1">
-            <span class="text-[10px] text-[#4a5060]">{validationVisible} / {validationItems.length} arquivos</span>
+            <span class="text-[10px] text-[#4a5060]">{$t('validation.counter', { done: validationVisible, total: validationItems.length })}</span>
             {#if validationDone}
               <span class="text-[10px] font-semibold"
                     class:text-[#3fb950]={validationErrors.length === 0}
                     class:text-[#f85149]={validationErrors.length > 0}>
-                {validationErrors.length === 0 ? '✓ sem problemas' : `✗ ${validationErrors.length} com erro`}
+                {validationErrors.length === 0 ? $t('validation.badgeOk') : $t('validation.badgeErrors', { n: validationErrors.length })}
               </span>
             {/if}
           </div>
@@ -714,7 +656,7 @@
               class="px-6 py-2 rounded-lg text-sm font-bold text-black transition-all
                      hover:brightness-110 active:scale-[0.97]
                      {validationErrors.length > 0 ? 'bg-[#f85149]' : 'bg-[#3fb950]'}">
-              {validationErrors.length > 0 ? `Continuar mesmo assim →` : 'Continuar →'}
+              {validationErrors.length > 0 ? $t('validation.continueErr') : $t('validation.continueOk')}
             </button>
           </div>
         {/if}
@@ -755,8 +697,8 @@
           </div>
           <div>
             <p class="text-[10px] tracking-[0.2em] uppercase font-semibold mb-0.5"
-               style="color:{ts.accent}">{ts.subtitle}</p>
-            <h2 class="text-xl font-bold text-[#e8eaf0]">{ts.title}</h2>
+               style="color:{ts.accent}">{$t('tutorial.slides.' + ts.key + '.subtitle')}</p>
+            <h2 class="text-xl font-bold text-[#e8eaf0]">{$t('tutorial.slides.' + ts.key + '.title')}</h2>
           </div>
           <button on:click={() => showTutorial = false}
             class="ml-auto text-[#3a3a50] hover:text-[#6e7681] transition-colors text-lg leading-none">✕</button>
@@ -764,7 +706,7 @@
 
         <!-- desc -->
         <div class="px-8 pb-4">
-          <p class="text-sm text-[#8a94a8] leading-relaxed">{ts.desc}</p>
+          <p class="text-sm text-[#8a94a8] leading-relaxed">{$t('tutorial.slides.' + ts.key + '.desc')}</p>
         </div>
 
         <!-- preview área -->
@@ -981,7 +923,7 @@
         <div class="mx-8 mb-5 flex items-start gap-2.5 px-3 py-2.5 rounded-lg
                     bg-[#f5a623]/6 border border-[#f5a623]/15">
           <span class="text-sm flex-shrink-0">💡</span>
-          <p class="text-[11px] text-[#8a94a8] leading-relaxed">{ts.tip}</p>
+          <p class="text-[11px] text-[#8a94a8] leading-relaxed">{$t('tutorial.slides.' + ts.key + '.tip')}</p>
         </div>
 
         <!-- footer -->
@@ -1006,13 +948,13 @@
                 class="px-4 py-2 rounded-lg text-xs text-[#4a5060]
                        hover:text-[#c9d1d9] transition-colors border border-transparent
                        hover:border-[#2a2a42]">
-                ← Anterior
+                {$t('tutorial.prev')}
               </button>
             {:else}
               <button on:click={() => showTutorial = false}
                 class="px-4 py-2 rounded-lg text-xs text-[#3a3a50]
                        hover:text-[#6e7681] transition-colors">
-                Pular tutorial
+                {$t('tutorial.skip')}
               </button>
             {/if}
 
@@ -1020,7 +962,7 @@
               class="px-5 py-2 rounded-lg text-sm font-bold text-black transition-all
                      hover:brightness-110 active:scale-[0.97]"
               style="background:{ts.accent}">
-              {tutorialSlide < TUTORIAL_SLIDES.length - 1 ? 'Próximo →' : '🚀 Começar a criar!'}
+              {tutorialSlide < TUTORIAL_SLIDES.length - 1 ? $t('tutorial.next') : $t('tutorial.cta')}
             </button>
           </div>
         </div>
@@ -1041,7 +983,7 @@
            class="w-24 h-24 object-contain mb-3
                   drop-shadow-[0_0_18px_rgba(245,166,35,0.5)]" />
 
-      <div class="text-[10px] tracking-[0.3em] text-[#4a5060] uppercase mb-1">Prompt Builder</div>
+      <div class="text-[10px] tracking-[0.3em] text-[#4a5060] uppercase mb-1">{$t('app.tagline')}</div>
       <h1 class="text-base font-bold tracking-wider mb-7">
         <span class="text-[#f5a623]">CASTOR</span>
         <span class="text-[#e06b2e]"> BUILDER</span>
@@ -1054,7 +996,7 @@
                hover:border-[#a371f7]/40 hover:text-[#a371f7] transition-all
                {screen === 'prompts' ? 'border-[#a371f7]/40 text-[#a371f7] bg-[#a371f7]/8' : ''}">
         <span class="text-sm">📚</span>
-        Prompts salvos
+        {$t('sidebar.savedPrompts')}
       </button>
 
       <!-- stepper vertical (consome espaço sobrando; scrolla se janela for baixa) -->
@@ -1078,7 +1020,7 @@
                          {active ? 'text-[#f5a623] font-semibold' : ''}
                          {done   ? 'text-[#6e7681]' : ''}
                          {locked ? 'text-[#2a2a40]' : ''}">
-              {step.label}
+              {$t('steps.' + step.id)}
             </span>
           </div>
           <!-- conector -->
@@ -1088,8 +1030,8 @@
         {/each}
       </nav>
 
-      <!-- tutorial + versão (sempre fixos no rodapé da sidebar) -->
-      <div class="flex-shrink-0 flex flex-col items-center gap-4 w-full pt-6">
+      <!-- tutorial + versão + seletor de idioma (sempre fixos no rodapé da sidebar) -->
+      <div class="flex-shrink-0 flex flex-col items-center gap-3 w-full pt-6">
         <button on:click={() => { tutorialSlide = 0; showTutorial = true }}
           class="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl
                  bg-[#f5a623] text-black text-[12px] font-bold tracking-wide
@@ -1097,9 +1039,23 @@
                  shadow-[0_0_16px_rgba(245,166,35,0.25)] hover:shadow-[0_0_24px_rgba(245,166,35,0.4)]
                  group">
           <span class="text-base group-hover:scale-110 transition-transform">🗺️</span>
-          Ver tutorial
+          {$t('sidebar.tutorial')}
         </button>
-        <div class="text-[10px] tracking-wider text-[#2a2a40]">v0.1.0</div>
+        <div class="text-[10px] tracking-wider text-[#2a2a40]">{$t('app.version')}</div>
+
+        <!-- seletor de idioma -->
+        <div class="flex items-center gap-1.5 mt-1" title={$t('sidebar.languageHint')}>
+          {#each LANG_OPTIONS as opt}
+            <button on:click={() => setLang(opt.code)}
+              title={opt.label}
+              class="text-base leading-none p-1 rounded-md transition-all
+                     {$lang === opt.code
+                       ? 'bg-[#f5a623]/15 ring-1 ring-[#f5a623]/40'
+                       : 'opacity-50 hover:opacity-100 hover:bg-[#1a1a28]'}">
+              {opt.flag}
+            </button>
+          {/each}
+        </div>
       </div>
     </aside>
 
@@ -1115,7 +1071,7 @@
                    hover:border-[#f5a623]/40 hover:text-[#f5a623] hover:bg-[#f5a623]/5
                    transition-all group">
             <span class="text-sm leading-none group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>Voltar</span>
+            <span>{$t('topbar.back')}</span>
           </button>
           {#if screen !== 'prompts'}
             <span class="text-[#2a2a40]">/</span>
@@ -1142,26 +1098,23 @@
           <div in:fly={{ y: 16, duration: 200 }}>
             {#if hasSavedState}
               <div class="flex items-center justify-between p-3 mb-5 rounded-xl border border-[#f5a623]/30 bg-[#f5a623]/8">
-                <span class="text-xs text-[#f5a623]">Você tem um progresso salvo. Deseja continuar?</span>
+                <span class="text-xs text-[#f5a623]">{$t('resume.message')}</span>
                 <div class="flex gap-2">
                   <button on:click={() => { resumeState(); hasSavedState = false }}
                     class="px-4 py-1.5 rounded-lg bg-[#f5a623] text-black text-xs font-bold
                            hover:bg-[#e09010] transition-all">
-                    Sim, continuar
+                    {$t('resume.confirm')}
                   </button>
                   <button on:click={dismissResume}
                     class="px-4 py-1.5 rounded-lg border border-[#2a2a42] text-[#6e7681] text-xs
                            hover:border-[#f5a623]/40 transition-all">
-                    Não, começar novo
+                    {$t('resume.discard')}
                   </button>
                 </div>
               </div>
             {/if}
-            <h2 class="text-lg font-bold mb-1">Escolha o framework</h2>
-            <p class="text-sm text-[#6e7681] mb-6">
-              Cada modelo estrutura o prompt de uma forma diferente.<br>
-              Escolha o que melhor se encaixa na sua tarefa.
-            </p>
+            <h2 class="text-lg font-bold mb-1">{$t('model.title')}</h2>
+            <p class="text-sm text-[#6e7681] mb-6">{$t('model.subtitle')}</p>
 
             <div class="grid grid-cols-2 gap-3">
               {#each models as m}
@@ -1194,22 +1147,20 @@
         {:else if screen === 'role'}
           <div in:fly={{ y: 16, duration: 200 }}>
             <div class="flex items-center justify-between mb-1">
-              <h2 class="text-lg font-bold">Selecione o(s) papel(eis)</h2>
+              <h2 class="text-lg font-bold">{$t('role.title')}</h2>
               {#if selectedRoles.size > 0}
                 <span class="text-xs px-2.5 py-1 rounded-full bg-[#f5a623]/15 text-[#f5a623] border border-[#f5a623]/30">
-                  {selectedRoles.size} selecionado{selectedRoles.size > 1 ? 's' : ''}
+                  {$t('role.selectedCount', { n: selectedRoles.size, s: selectedRoles.size > 1 ? 's' : '' })}
                 </span>
               {/if}
             </div>
-            <p class="text-sm text-[#6e7681] mb-4">
-              Você pode combinar múltiplos papéis para um prompt mais rico.
-            </p>
+            <p class="text-sm text-[#6e7681] mb-4">{$t('role.subtitle')}</p>
 
             <!-- busca -->
             <div class="relative mb-4">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[#4a5060] text-sm">⌕</span>
               <input bind:value={roleSearch}
-                placeholder="Buscar papel ou categoria..."
+                placeholder={$t('role.searchPlaceholder')}
                 class="w-full pl-8 pr-4 py-2 rounded-lg border border-[#1a1a28]
                        bg-[#0d0d18] text-sm text-[#c9d1d9] placeholder-[#4a5060]
                        focus:outline-none focus:border-[#f5a623]/60 transition-colors" />
@@ -1248,7 +1199,7 @@
                 class="w-full py-2.5 rounded-xl bg-[#f5a623] text-black font-bold text-sm
                        hover:bg-[#e09010] disabled:opacity-30 disabled:cursor-not-allowed
                        transition-all active:scale-[0.98]">
-                Continuar →
+                {$t('role.continue')}
               </button>
             </div>
           </div>
@@ -1258,13 +1209,11 @@
         ============================================================= -->
         {:else if screen === 'narrative'}
           <div in:fly={{ y: 16, duration: 200 }}>
-            <h2 class="text-lg font-bold mb-1">Descreva sua tarefa</h2>
-            <p class="text-sm text-[#6e7681] mb-5">
-              Escreva livremente. Quanto mais contexto, melhor o prompt gerado.
-            </p>
+            <h2 class="text-lg font-bold mb-1">{$t('narrative.title')}</h2>
+            <p class="text-sm text-[#6e7681] mb-5">{$t('narrative.subtitle')}</p>
 
             <textarea bind:value={narrative}
-              placeholder="Ex: Preciso criar um plano editorial para os próximos 3 meses. A empresa é uma startup B2B de SaaS que está com queda de engajamento no blog. O público-alvo são desenvolvedores e CTOs..."
+              placeholder={$t('narrative.placeholder')}
               rows="10"
               class="w-full px-4 py-3 rounded-xl border border-[#1a1a28]
                      bg-[#0d0d18] text-[#c9d1d9] placeholder-[#3a3a50] text-sm
@@ -1272,12 +1221,12 @@
                      transition-colors leading-relaxed" />
 
             <div class="flex items-center justify-between mt-4">
-              <span class="text-xs text-[#3a3a50]">{narrative.length} caracteres</span>
+              <span class="text-xs text-[#3a3a50]">{$t('narrative.charCount', { n: narrative.length })}</span>
               <button on:click={confirmNarrative} disabled={!narrative.trim()}
                 class="px-6 py-2.5 rounded-xl bg-[#f5a623] text-black font-bold text-sm
                        hover:bg-[#e09010] disabled:opacity-30 disabled:cursor-not-allowed
                        transition-all active:scale-[0.98]">
-                Continuar →
+                {$t('narrative.continue')}
               </button>
             </div>
           </div>
@@ -1289,10 +1238,8 @@
           <div class="flex flex-col h-full" in:fly={{ y: 16, duration: 200 }}>
             <!-- header -->
             <div class="flex-shrink-0 mb-3">
-              <h2 class="text-lg font-bold mb-1">Contexto adicional</h2>
-              <p class="text-sm text-[#6e7681]">
-                Preencha as lacunas — ★ obrigatório, ✓ preenchido
-              </p>
+              <h2 class="text-lg font-bold mb-1">{$t('gap.title')}</h2>
+              <p class="text-sm text-[#6e7681]">{$t('gap.subtitle')}</p>
             </div>
 
             <!-- top bar: collapse all + progress -->
@@ -1301,7 +1248,7 @@
                 <button on:click={toggleAllSections}
                   class="text-[10px] px-3 py-1 rounded-full border font-semibold transition-all
                          {allExpanded ? 'border-[#f5a623]/40 text-[#f5a623] bg-[#f5a623]/10' : 'border-[#1a1a28] text-[#4a5060] hover:text-[#f5a623] hover:border-[#f5a623]/40'}">
-                  {allExpanded ? '▼ Expandido' : '▶ Compacto'}
+                  {allExpanded ? $t('gap.expanded') : $t('gap.collapsed')}
                 </button>
               </div>
               <!-- progress + layout toggle -->
@@ -1309,8 +1256,8 @@
                 <button on:click={() => expandEditor = !expandEditor}
                   class="text-[10px] px-2 py-1 rounded border transition-all
                          {expandEditor ? 'border-[#f5a623]/40 text-[#f5a623] bg-[#f5a623]/10' : 'border-[#1a1a28] text-[#4a5060] hover:text-[#f5a623] hover:border-[#f5a623]/40'}"
-                  title={expandEditor ? 'Mostrar lista de lacunas' : 'Expandir área de resposta'}>
-                  {expandEditor ? '◧ Ambos' : '◨ Editor'}
+                  title={expandEditor ? $t('gap.toggleEditorTitle') : $t('gap.toggleEditorAltTitle')}>
+                  {expandEditor ? $t('gap.toggleEditor') : $t('gap.toggleEditorAlt')}
                 </button>
                 <div class="w-24 h-1.5 rounded-full bg-[#1a1a28] overflow-hidden">
                   <div class="h-full bg-[#f5a623] rounded-full transition-all duration-300"
@@ -1326,7 +1273,7 @@
               {#if !expandEditor}
               <div class="w-[38%] flex-shrink-0 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
                 {#if rawTotal === 0}
-                  <div class="p-4 text-xs text-[#4a5060] text-center">Nenhuma lacuna pendente</div>
+                  <div class="p-4 text-xs text-[#4a5060] text-center">{$t('gap.noPending')}</div>
                 {:else}
                   <div class="flex flex-col">
                     {#each sortedVisibleSections as sec, si}
@@ -1339,12 +1286,12 @@
                                  ? 'text-[#f5a623]/80 border-[#f5a623]/20 bg-[#f5a623]/5'
                                  : 'text-[#a371f7]/80 border-[#1a1a28]'}">
                         <span class="text-[#6e7681]">{collapsed ? '▶' : '▼'}</span>
-                        <span>{sec.kind === 'model' ? '📐 ' : '🎭 '}{sec.title}</span>
+                        <span>{sec.kind === 'model' ? '📐 ' : '🎭 '}{sec.kind === 'model' ? $t('gap.sectionModel', { name: sec.title }) : sec.title}</span>
                         <span class="ml-auto text-[#3a3a50]">{sec.gaps.length}</span>
                       </button>
                       {#if collapsed}
                         <div class="px-3 py-1 text-[10px] text-[#3a3a50] border-b border-[#1a1a28]">
-                          {sec.gaps.filter(g => g.answer).length}/{sec.gaps.length} preenchidos
+                          {$t('gap.filledOf', { done: sec.gaps.filter(g => g.answer).length, total: sec.gaps.length })}
                         </div>
                       {:else}
                         {#each sec.gaps as g, gi}
@@ -1449,7 +1396,7 @@
                          {selSecIdx > 0 || selGapIdx > 0
                            ? 'border-[#f5a623]/40 text-[#f5a623] hover:bg-[#f5a623]/10'
                            : 'border-[#1a1a28] text-[#3a3a50]'}">
-                  ← Anterior
+                  {$t('gap.prev')}
                 </button>
                 <button on:click={skipAll}
                   class="px-4 py-2 rounded-lg border text-xs transition-all
@@ -1457,8 +1404,8 @@
                            ? 'border-[#f85149]/30 text-[#f85149]/50 cursor-not-allowed'
                            : 'border-[#1a1a28] text-[#4a5060] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}"
                   disabled={hasUnansweredRequired}
-                  title={hasUnansweredRequired ? 'Preencha os campos obrigatórios primeiro' : 'Pular todas as lacunas'}>
-                  ⏭ Pular tudo
+                  title={hasUnansweredRequired ? $t('gap.skipBlocked') : $t('gap.skipTitle')}>
+                  {$t('gap.skipAll')}
                 </button>
               </div>
               <span class="text-[10px] text-[#4a5060]">
@@ -1467,7 +1414,7 @@
               <button on:click={nextGap}
                 class="px-6 py-2 rounded-xl bg-[#f5a623] text-black font-bold text-sm
                        hover:bg-[#e09010] transition-all active:scale-[0.98]">
-                {answeredCount >= totalCount ? 'Continuar →' : 'Próxima →'}
+                {answeredCount >= totalCount ? $t('gap.continue') : $t('gap.next')}
               </button>
             </div>
           </div>
@@ -1477,10 +1424,8 @@
         ============================================================= -->
         {:else if screen === 'phase'}
           <div in:fly={{ y: 16, duration: 200 }}>
-            <h2 class="text-lg font-bold mb-1">Fases de execução</h2>
-            <p class="text-sm text-[#6e7681] mb-5">
-              Divida o trabalho em etapas para um prompt mais estruturado.
-            </p>
+            <h2 class="text-lg font-bold mb-1">{$t('phase.title')}</h2>
+            <p class="text-sm text-[#6e7681] mb-5">{$t('phase.subtitle')}</p>
 
             <!-- toggle -->
             <div class="flex gap-2 mb-6">
@@ -1489,14 +1434,14 @@
                        {usePhases
                          ? 'border-[#f5a623]/50 bg-[#f5a623]/10 text-[#f5a623]'
                          : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/30'}">
-                ✦ Sim, quero definir fases
+                ✦ {$t('phase.enableYes')}
               </button>
               <button on:click={() => { usePhases = false; phases = [] }}
                 class="flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all
                        {!usePhases
                          ? 'border-[#f5a623]/50 bg-[#f5a623]/10 text-[#f5a623]'
                          : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/30'}">
-                ⚡ Não, gerar direto
+                ⚡ {$t('phase.enableNo')}
               </button>
             </div>
 
@@ -1506,18 +1451,18 @@
                   <div class="p-4 rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
                     <div class="flex items-center justify-between mb-3">
                       <span class="text-xs font-semibold text-[#f5a623]/70 tracking-wider uppercase">
-                        Fase {i + 1}
+                        {$t('phase.label', { n: i + 1 })}
                       </span>
                       <button on:click={() => phases = phases.filter((_, j) => j !== i)}
                         class="text-[#3a3a50] hover:text-[#f85149] text-xs transition-colors">
-                        ✕ remover
+                        ✕ {$t('phase.removePhase')}
                       </button>
                     </div>
-                    <input bind:value={phase.titulo} placeholder="Título da fase"
+                    <input bind:value={phase.titulo} placeholder={$t('phase.phaseTitle')}
                       class="w-full px-3 py-2 mb-2 rounded-lg border border-[#1a1a28]
                              bg-[#0a0a12] text-sm text-[#c9d1d9] placeholder-[#3a3a50]
                              focus:outline-none focus:border-[#f5a623]/50 transition-colors" />
-                    <textarea bind:value={phase.descricao} placeholder="O que deve ser feito nesta fase..." rows="2"
+                    <textarea bind:value={phase.descricao} placeholder={$t('phase.phaseDesc')} rows="2"
                       class="w-full px-3 py-2 rounded-lg border border-[#1a1a28]
                              bg-[#0a0a12] text-sm text-[#c9d1d9] placeholder-[#3a3a50] resize-none
                              focus:outline-none focus:border-[#f5a623]/50 transition-colors" />
@@ -1527,7 +1472,7 @@
                   class="w-full py-3 rounded-xl border border-dashed border-[#2a2a40]
                          text-[#4a5060] hover:border-[#f5a623]/40 hover:text-[#f5a623]/70
                          text-sm transition-all">
-                  + Adicionar fase
+                  {$t('phase.addPhase')}
                 </button>
               </div>
             {/if}
@@ -1537,7 +1482,7 @@
                      {building
                        ? 'bg-[#f5a623]/40 text-black/50 cursor-wait'
                        : 'bg-[#f5a623] text-black hover:bg-[#e09010]'}">
-              {building ? '⏳ Gerando...' : '⚡ Gerar Prompt'}
+              {building ? '⏳ ' + $t('result.building') : '⚡ ' + $t('phase.generate')}
             </button>
           </div>
 
@@ -1550,7 +1495,7 @@
               <div class="flex items-start gap-3 p-4 rounded-xl border border-[#f85149]/30 bg-[#f85149]/8 mb-4">
                 <span class="text-[#f85149] text-lg">✗</span>
                 <div>
-                  <p class="text-sm font-semibold text-[#f85149]">Erro ao gerar prompt</p>
+                  <p class="text-sm font-semibold text-[#f85149]">{$t('result.errorTitle')}</p>
                   <p class="text-xs text-[#c9d1d9] mt-1">{resultError}</p>
                 </div>
               </div>
@@ -1558,7 +1503,7 @@
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2">
                   <span class="text-[#3fb950]">✓</span>
-                  <span class="text-sm font-semibold text-[#3fb950]">Prompt gerado com sucesso!</span>
+                  <span class="text-sm font-semibold text-[#3fb950]">{$t('result.success')}</span>
                 </div>
                 <div class="flex gap-2">
                   <button on:click={saveToLibrary}
@@ -1566,14 +1511,14 @@
                            {saved
                              ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
                              : 'border-[#1a1a28] text-[#6e7681] hover:border-[#a371f7]/40 hover:text-[#a371f7]'}">
-                    {saved ? '✓ Salvo!' : '💾 Salvar'}
+                    {saved ? $t('result.saved') : $t('result.save')}
                   </button>
                   <button on:click={copyResult}
                     class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all
                            {copied
                              ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
                              : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}">
-                    {copied ? '✓ Copiado!' : '⎘ Copiar'}
+                    {copied ? $t('result.copied') : $t('result.copy')}
                   </button>
                 </div>
               </div>
@@ -1586,23 +1531,23 @@
             <button on:click={restart}
               class="mt-4 w-full py-2.5 rounded-xl border border-[#1a1a28] text-[#6e7681] text-sm
                      hover:border-[#f5a623]/40 hover:text-[#f5a623] transition-all">
-              ← Criar novo prompt
+              {$t('result.restart')}
             </button>
           </div>
         {:else if screen === 'prompts'}
           <div class="flex flex-col h-full" in:fly={{ y: 16, duration: 200 }}>
             <!-- header com contador -->
             <div class="flex items-end justify-between mb-1">
-              <h2 class="text-lg font-bold">Prompts salvos</h2>
+              <h2 class="text-lg font-bold">{$t('prompts.title')}</h2>
               {#if promptList.length > 0}
                 <span class="text-[11px] text-[#4a5060]">
-                  {promptList.length} {promptList.length === 1 ? 'prompt' : 'prompts'}
+                  {promptList.length === 1
+                    ? $t('prompts.counterOne',  { n: promptList.length })
+                    : $t('prompts.counterMany', { n: promptList.length })}
                 </span>
               {/if}
             </div>
-            <p class="text-sm text-[#6e7681] mb-4">
-              Gerencie seus prompts gerados anteriormente.
-            </p>
+            <p class="text-sm text-[#6e7681] mb-4">{$t('prompts.subtitle')}</p>
 
             <div class="flex-1 flex gap-4 min-h-0">
               <!-- coluna esquerda: busca + lista -->
@@ -1613,7 +1558,7 @@
                     <input
                       type="text"
                       bind:value={promptSearch}
-                      placeholder="Buscar por título…"
+                      placeholder={$t('prompts.searchPlaceholder')}
                       class="w-full pl-8 pr-3 py-2 rounded-lg text-xs
                              bg-[#0d0d18] border border-[#1a1a28]
                              text-[#c9d1d9] placeholder:text-[#3a3a50]
@@ -1632,14 +1577,12 @@
                   {#if promptList.length === 0}
                     <div class="h-full flex flex-col items-center justify-center gap-2 p-6 text-center">
                       <span class="text-2xl opacity-50">📭</span>
-                      <p class="text-xs text-[#6e7681]">Nenhum prompt salvo</p>
-                      <p class="text-[10px] text-[#4a5060] leading-relaxed">
-                        Salve prompts na tela de resultado para reaproveitá-los depois.
-                      </p>
+                      <p class="text-xs text-[#6e7681]">{$t('prompts.emptyTitle')}</p>
+                      <p class="text-[10px] text-[#4a5060] leading-relaxed">{$t('prompts.emptyDesc')}</p>
                     </div>
                   {:else if filteredPrompts.length === 0}
                     <div class="h-full flex items-center justify-center p-4 text-xs text-[#4a5060]">
-                      Nenhum resultado para "{promptSearch}"
+                      {$t('prompts.noSearchResults', { q: promptSearch })}
                     </div>
                   {:else}
                     <div class="flex flex-col">
@@ -1651,7 +1594,7 @@
                             on:click={() => viewPrompt(p.id)}
                             class="flex-1 min-w-0 px-3 py-2.5 text-left text-xs">
                             <p class="truncate {promptViewId === p.id ? 'text-[#a371f7] font-medium' : 'text-[#c9d1d9]'}">
-                              {p.titulo || 'Sem título'}
+                              {p.titulo || $t('prompts.untitled')}
                             </p>
                             <p class="text-[10px] text-[#4a5060]" title={p.data}>{relativeDate(p.data)}</p>
                           </button>
@@ -1661,16 +1604,16 @@
                               <button on:click={() => deletePrompt(p.id)}
                                 class="text-[10px] px-2 py-1 rounded bg-[#f85149]/15 border border-[#f85149]/40
                                        text-[#f85149] hover:bg-[#f85149]/25 transition-colors">
-                                Confirmar
+                                {$t('prompts.deleteConfirm')}
                               </button>
                               <button on:click={() => promptToDelete = null}
                                 class="text-[10px] px-2 py-1 rounded text-[#6e7681] hover:text-[#c9d1d9] transition-colors">
-                                Cancelar
+                                {$t('prompts.deleteCancel')}
                               </button>
                             </div>
                           {:else}
                             <button on:click={() => requestDelete(p.id)}
-                              title="Excluir"
+                              title={$t('prompts.deleteTooltip')}
                               class="flex-shrink-0 mr-2 p-1 text-[#3a3a50] hover:text-[#f85149] text-xs transition-colors">
                               ✕
                             </button>
@@ -1691,17 +1634,17 @@
                              {promptViewCopied
                                ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
                                : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}">
-                      {promptViewCopied ? '✓ Copiado!' : '⎘ Copiar'}
+                      {promptViewCopied ? $t('result.copied') : $t('result.copy')}
                     </button>
                   </div>
                   <div class="flex-1 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18] min-h-0">
                     <pre class="p-5 text-xs text-[#c9d1d9] leading-relaxed
-                                whitespace-pre-wrap font-mono">{promptViewContent || 'Carregando...'}</pre>
+                                whitespace-pre-wrap font-mono">{promptViewContent || $t('prompts.loading')}</pre>
                   </div>
                 {:else}
                   <div class="flex-1 flex items-center justify-center p-4 text-xs text-[#4a5060]
                               rounded-xl border border-[#1a1a28] bg-[#0d0d18] min-h-0">
-                    Selecione um prompt para visualizar
+                    {$t('prompts.selectToView')}
                   </div>
                 {/if}
               </div>
