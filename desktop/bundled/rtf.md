@@ -26,19 +26,14 @@ campos:
   - id: premissas
     label: Premissas e condições
     tipo: list
-    obrigatorio: false
+    obrigatorio: true
 ---
-
 ## Template de saída
-
 Você é {{role}}.
-
 {{task}}
-
 {{#if format}}
 Apresente o resultado em formato de {{format}}.
 {{/if}}
-
 {{#if premissas}}
 Considere as seguintes premissas:
 {{#each premissas}}- {{.}}

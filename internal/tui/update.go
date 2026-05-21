@@ -205,9 +205,17 @@ func (m AppModel) updateNarrative(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				Opcoes:      c.Opcoes,
 			})
 		}
-		// obrigatorios primeiro
+		// obrigatorios primeiro, depois respondidos, depois opcionais vazios
 		sort.SliceStable(modelGaps, func(i, j int) bool {
-			return modelGaps[i].Obrigatorio && !modelGaps[j].Obrigatorio
+			ai, aj := modelGaps[i], modelGaps[j]
+			// required empty = 0, answered = 1, optional empty = 2
+			scoreI := 2
+			if ai.Obrigatorio && ai.Answer == "" { scoreI = 0 }
+			if ai.Answer != "" { scoreI = 1 }
+			scoreJ := 2
+			if aj.Obrigatorio && aj.Answer == "" { scoreJ = 0 }
+			if aj.Answer != "" { scoreJ = 1 }
+			return scoreI < scoreJ
 		})
 		if len(modelGaps) > 0 {
 			sections = append(sections, ContextSection{

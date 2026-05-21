@@ -42,34 +42,26 @@ campos:
   - id: premissas
     label: Premissas e condições
     tipo: list
-    obrigatorio: false
+    obrigatorio: true
 ---
-
 ## Template de saída
-
 Você é {{role}}.
-
 ## Contexto
 {{context}}
-
 ## Público-alvo
 {{audience}}
-
 {{#if tom}}
 Adote um tom {{tom}}.
 {{/if}}
-
 {{#if examples}}
 ## Referências
 {{#each examples}}- {{.}}
 {{/each}}
 {{/if}}
-
 {{#if premissas}}
 ## Premissas
 {{#each premissas}}- {{.}}
 {{/each}}
 {{/if}}
-
 ## Entregável esperado
 {{expectation}}

@@ -38,7 +38,7 @@ campos:
   - id: premissas
     label: Premissas e condições
     tipo: list
-    obrigatorio: false
+    obrigatorio: true
 ---
 ## Template de saída
 Você é {{role}}.

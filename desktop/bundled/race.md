@@ -58,34 +58,25 @@ campos:
   - id: premissas
     label: Premissas e condições
     tipo: list
-    obrigatorio: false
+    obrigatorio: true
 ---
-
 ## Template de saída
-
 Você é {{role}}.
-
 {{action}}
-
 O contexto é o seguinte: {{context}}
-
 {{#if tom}}
 Adote um tom {{tom}}.
 {{/if}}
-
 {{#steps fases}}
 ## {{titulo}}
 {{descricao}}
 {{/steps}}
-
 {{#if canais}}
 Considere os seguintes canais: {{#each canais}}{{.}}{{/each}}.
 {{/if}}
-
 {{#if premissas}}
 ## Premissas
 {{#each premissas}}- {{.}}
 {{/each}}
 {{/if}}
-
 Espera-se que {{expectation}}
