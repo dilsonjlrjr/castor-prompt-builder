@@ -39,11 +39,11 @@ export namespace main {
 	    gap_answers: GapAnswerDTO[];
 	    steps: StepDTO[];
 	    lang?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new BuildRequestDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.model_id = source["model_id"];
