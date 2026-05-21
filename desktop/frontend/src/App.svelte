@@ -35,7 +35,6 @@
   let phases: Step[] = []
 
   let resultContent = ''
-  let resultPath    = '' // mantido para compatibilidade com o tipo retornado
   let resultError   = ''
   let building      = false
   let copied        = false
@@ -138,11 +137,6 @@
   function prevTutorial() {
     if (tutorialSlide > 0) tutorialSlide--
   }
-
-  const MODEL_TAG_COLOR: Record<string, string> = {
-    RTF: '#3fb950', RACE: '#f5a623', RISEN: '#a371f7', CREATE: '#58a6ff',
-  }
-  function tagColor(t: string) { return MODEL_TAG_COLOR[t] ?? '#6e7681' }
 
   async function runValidation() {
     showValidation   = true
@@ -285,6 +279,10 @@
   }
   function modelColor(id: string) { return MODEL_COLOR[id] ?? '#6e7681' }
 
+  // Ordenação de gaps: obrigatórias vazias → preenchidas → opcionais vazias
+  const gapPriority = (g: Gap) => g.answer ? 1 : (g.obrigatorio ? 0 : 2)
+  const byGapPriority = (a: Gap, b: Gap) => gapPriority(a) - gapPriority(b)
+
   // ---- navegação ----
   const BACK_MAP: Partial<Record<Screen, () => Screen>> = {
     role:      () => 'model',
@@ -339,12 +337,7 @@
       obrigatorio: c.obrigatorio,
       answer:      '',
     }))
-    // sort: required empty first, then answered, then optional empty
-    modelGaps.sort((a, b) => {
-      const scoreA = a.answer ? 1 : (a.obrigatorio ? 0 : 2)
-      const scoreB = b.answer ? 1 : (b.obrigatorio ? 0 : 2)
-      return scoreA - scoreB
-    })
+    modelGaps.sort(byGapPriority)
     if (modelGaps.length > 0) {
       sections.push({ title: 'Contexto do Modelo (' + (selectedModel?.nome ?? '') + ')', kind: 'model', gaps: modelGaps })
     }
@@ -383,14 +376,9 @@
 
   $: visibleSections = contextSections
 
-  // sort gaps within each section: required empty first, then answered, then optional empty
   $: sortedVisibleSections = visibleSections.map(sec => ({
     ...sec,
-    gaps: [...sec.gaps].sort((a, b) => {
-      const aScore = a.answer ? 1 : (a.obrigatorio ? 0 : 2)
-      const bScore = b.answer ? 1 : (b.obrigatorio ? 0 : 2)
-      return aScore - bScore
-    })
+    gaps: [...sec.gaps].sort(byGapPriority),
   }))
 
   $: selectedGap = (() => {
@@ -551,7 +539,6 @@
       steps:       usePhases ? phases : [],
     }))
     resultContent = result.conteudo
-    resultPath    = result.caminho
     resultError   = result.erro ?? ''
     building      = false
     screen        = 'result'
@@ -609,7 +596,6 @@
     phases           = []
     usePhases        = false
     resultContent    = ''
-    resultPath       = '' as string
     resultError      = ''
     screen           = 'model'
     clearState()
