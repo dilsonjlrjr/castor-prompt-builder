@@ -5,12 +5,16 @@
   import { GetModels, GetRoles, BuildPrompt, IsFirstRun, ValidateAll, SavePrompt, ListPrompts, DeletePrompt, GetPrompt } from '../wailsjs/go/main/App.js'
   import { main } from '../wailsjs/go/models'
   import { t, lang, setLang, LANG_META, type Lang } from './lib/i18n'
+  import { getPreviewData } from './lang/previews'
 
   // Pré-monta as opções de idioma para iterar no template sem cast TS.
   const LANG_OPTIONS: { code: Lang; flag: string; label: string }[] =
     (Object.keys(LANG_META) as Lang[]).map(code => ({
       code, flag: LANG_META[code].flag, label: LANG_META[code].nativeLabel,
     }))
+
+  // Dados ilustrativos do tutorial (textos do preview) por idioma — reativo.
+  $: preview = getPreviewData($lang)
 
   // ---- tipos ----
   type Campo  = { id: string; label: string; tipo: string; obrigatorio: boolean; opcoes?: string[] }
@@ -716,14 +720,7 @@
           {#if ts.preview === 'pipeline'}
             <div class="p-5">
               <div class="flex items-stretch gap-0">
-                {#each [
-                  { icon:'📐', label:'Modelo',   accent:'#f5a623' },
-                  { icon:'🎭', label:'Papéis',   accent:'#a371f7' },
-                  { icon:'✍️', label:'Tarefa',   accent:'#58a6ff' },
-                  { icon:'💬', label:'Contexto', accent:'#3fb950' },
-                  { icon:'📋', label:'Fases',    accent:'#e06c75' },
-                  { icon:'🚀', label:'Prompt',   accent:'#f5a623' },
-                ] as s, si}
+                {#each preview.pipeline.steps as s, si}
                   <div class="flex-1 flex flex-col items-center gap-1.5 relative">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl
                                 border border-[#1e1e2e]"
@@ -739,11 +736,7 @@
                 {/each}
               </div>
               <div class="mt-4 pt-3 border-t border-[#1a1a28] grid grid-cols-3 gap-2">
-                {#each [
-                  { label:'Estrutura clara', desc:'O modelo organiza as seções do prompt' },
-                  { label:'Especialistas', desc:'Os papéis definem o estilo e contexto' },
-                  { label:'Sem IA no processo', desc:'Tudo é template engine e heurística' },
-                ] as feat}
+                {#each preview.pipeline.features as feat}
                   <div class="rounded-lg p-2.5 bg-[#0d0d18] border border-[#1e1e2e]">
                     <p class="text-[10px] font-bold text-[#c9d1d9] mb-0.5">{feat.label}</p>
                     <p class="text-[9px] text-[#4a5060] leading-snug">{feat.desc}</p>
@@ -755,12 +748,7 @@
           <!-- MODELS preview -->
           {:else if ts.preview === 'models'}
             <div class="p-4 flex flex-col gap-2">
-              {#each [
-                { id:'RACE',   color:'#f5a623', desc:'Contexto rico + entregável claro',    tag:'Mais usado'   },
-                { id:'RTF',    color:'#3fb950', desc:'Tarefas diretas e objetivas',          tag:''             },
-                { id:'RISEN',  color:'#a371f7', desc:'Steps detalhados com restrições',      tag:'Complexo'     },
-                { id:'CREATE', color:'#58a6ff', desc:'Conteúdo criativo com público e tom',  tag:'Criativo'     },
-              ] as m, mi}
+              {#each preview.models as m, mi}
                 <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all
                             {mi === 0
                               ? 'border-[#f5a623]/40 bg-[#f5a623]/5'
@@ -784,11 +772,7 @@
           {:else if ts.preview === 'roles'}
             <div class="p-4">
               <div class="flex gap-2 mb-3 flex-wrap">
-                {#each [
-                  { nome:'Arquiteto Cloud', color:'#a371f7', sel: true  },
-                  { nome:'DevOps Engineer', color:'#a371f7', sel: true  },
-                  { nome:'QA Lead',         color:'#a371f7', sel: false },
-                ] as r}
+                {#each preview.roles.chips as r}
                   <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold
                               {r.sel
                                 ? 'border-[#a371f7]/40 bg-[#a371f7]/10 text-[#a371f7]'
@@ -799,14 +783,14 @@
                 {/each}
               </div>
               <div class="border-t border-[#1a1a28] pt-3">
-                <p class="text-[9px] uppercase tracking-widest text-[#3a3a50] mb-2">🏗️ Arquitetura</p>
+                <p class="text-[9px] uppercase tracking-widest text-[#3a3a50] mb-2">{preview.roles.catLabel}</p>
                 <div class="grid grid-cols-2 gap-1.5">
-                  {#each ['Arquiteto Cloud ✓','Arquiteto de Software ✓','Arquiteto de Soluções','Arquiteto de Microsserviços'] as r}
+                  {#each preview.roles.grid as r}
                     <div class="text-[10px] px-2 py-1 rounded border
-                                {r.includes('✓')
+                                {r.selected
                                   ? 'border-[#a371f7]/30 bg-[#a371f7]/8 text-[#a371f7]'
                                   : 'border-[#1e1e2e] text-[#4a5060]'}">
-                      {r}
+                      {r.name}{r.selected ? ' ✓' : ''}
                     </div>
                   {/each}
                 </div>
@@ -818,18 +802,11 @@
             <div class="p-4">
               <div class="rounded-lg border border-[#2a2a42] bg-[#0d0d18] p-3 font-mono text-xs
                           text-[#8a94a8] leading-relaxed mb-3">
-                <span class="text-[#58a6ff]">Preciso criar uma API de pagamentos</span> para o nosso
-                e-commerce. Usamos Go e PostgreSQL, com pico de <span class="text-[#3fb950]">10k req/s</span>
-                em datas comemorativas. O sistema precisa integrar com o gateway da Stripe e suportar
-                <span class="text-[#f5a623]">Pix, cartão e boleto</span>. A equipe tem 4 devs sênior.
+                {#each preview.narrative.paragraph as p}{#if p.type === 'highlight'}<span style="color:{p.color}">{p.content}</span>{:else}{p.content}{/if}{/each}
                 <span class="text-[#4a5060] animate-pulse">█</span>
               </div>
               <div class="flex gap-2 flex-wrap">
-                {#each [
-                  { label:'Stack detectada', val:'Go + PostgreSQL', c:'#58a6ff' },
-                  { label:'Carga', val:'10k req/s', c:'#3fb950' },
-                  { label:'Integrações', val:'Stripe, Pix', c:'#f5a623' },
-                ] as hint}
+                {#each preview.narrative.hints as hint}
                   <div class="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border"
                        style="border-color:{hint.c}25; background:{hint.c}10; color:{hint.c}">
                     <span class="opacity-60">{hint.label}:</span>
@@ -845,24 +822,24 @@
               <div class="rounded-lg border border-[#3fb950]/25 bg-[#3fb950]/5 p-3">
                 <div class="flex items-start justify-between gap-2 mb-2">
                   <p class="text-xs text-[#c9d1d9] font-medium leading-snug">
-                    Comunicação síncrona (REST/gRPC) ou assíncrona (Kafka/NATS)?
+                    {preview.gaps.question}
                   </p>
                   <span class="text-[#3fb950] text-base flex-shrink-0">?</span>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <span class="text-[9px] px-2 py-0.5 rounded-full border font-semibold
                                bg-[#a371f7]/12 text-[#a371f7] border-[#a371f7]/20">
-                    🎭 Arquiteto Cloud
+                    {preview.gaps.askedBy}
                   </span>
                 </div>
               </div>
               <div class="rounded-lg border border-[#1e1e2e] bg-[#0d0d18] px-3 py-2 text-xs
                           text-[#4a5060] font-mono">
-                REST síncrono para pagamentos, Kafka para eventos de confirmação...
+                {preview.gaps.answer}
                 <span class="text-[#3fb950] animate-pulse">█</span>
               </div>
               <div class="flex justify-between items-center text-[10px]">
-                <span class="text-[#3a3a50]">Pergunta 3 de 8</span>
+                <span class="text-[#3a3a50]">{preview.gaps.progress}</span>
                 <span class="text-[#3fb950]">▓▓▓░░░░░ 37%</span>
               </div>
             </div>
@@ -870,11 +847,7 @@
           <!-- PHASES preview -->
           {:else if ts.preview === 'phases'}
             <div class="p-4 flex flex-col gap-2">
-              {#each [
-                { n:1, title:'Diagnóstico e Análise', desc:'Avalie os requisitos de throughput, modelagem do banco e pontos de integração com o gateway.', done: true  },
-                { n:2, title:'Implementação do Core', desc:'Construa os endpoints principais de criação e consulta de transações com idempotência.', done: false },
-                { n:3, title:'Integrações e Testes',  desc:'Conecte Stripe, Pix e boleto. Cobertura de testes de contrato e carga.', done: false },
-              ] as ph}
+              {#each preview.phases as ph}
                 <div class="flex gap-3 rounded-lg border p-3
                             {ph.done
                               ? 'border-[#e06c75]/30 bg-[#e06c75]/5'
@@ -897,21 +870,19 @@
             <div class="p-4">
               <div class="rounded-lg border border-[#1e1e2e] bg-[#0d0d18] p-3 font-mono text-[10px]
                           text-[#6e7681] leading-relaxed max-h-40 overflow-hidden relative">
-                <div class="text-[#f5a623] font-bold mb-1"># Prompt — Arquiteto Cloud</div>
-                <div class="text-[#3fb950] mb-1">## Papel</div>
-                <div class="mb-2">Você é um Arquiteto Cloud sênior. Especialista em sistemas de
-                alta disponibilidade, multi-region e otimização de custos em AWS/GCP/Azure...</div>
-                <div class="text-[#3fb950] mb-1">## Contexto</div>
-                <div class="mb-2">API de pagamentos Go + PostgreSQL. Pico 10k req/s. Integração
-                Stripe, Pix e boleto. Time de 4 devs sênior...</div>
-                <div class="text-[#a371f7] mb-1">## Habilidades relevantes</div>
-                <div>- AWS / GCP / Azure&#10;- Infraestrutura como código&#10;- Kubernetes...</div>
+                <div class="text-[#f5a623] font-bold mb-1">{preview.result.title}</div>
+                <div class="text-[#3fb950] mb-1">{preview.result.roleHead}</div>
+                <div class="mb-2">{preview.result.roleBody}</div>
+                <div class="text-[#3fb950] mb-1">{preview.result.ctxHead}</div>
+                <div class="mb-2">{preview.result.ctxBody}</div>
+                <div class="text-[#a371f7] mb-1">{preview.result.skillsHead}</div>
+                <pre class="whitespace-pre-wrap font-mono">{preview.result.skillsBody}</pre>
                 <div class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-[#0d0d18]"></div>
               </div>
               <div class="flex justify-end mt-3">
                 <div class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold
                             bg-[#f5a623] text-black cursor-default">
-                  📋 Copiar prompt
+                  {preview.result.copyButton}
                 </div>
               </div>
             </div>
