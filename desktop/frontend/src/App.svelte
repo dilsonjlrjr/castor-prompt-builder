@@ -118,7 +118,6 @@
     roles  = await GetRoles($lang)
     const first = await IsFirstRun()
     if (first) { tutorialSlide = 0; showTutorial = true }
-    await runValidation()
     hasSavedState = (() => {
       const raw = localStorage.getItem(SAVE_KEY)
       if (!raw) return false
@@ -344,6 +343,7 @@
   let expandEditor = false
   let selSecIdx = 0
   let selGapIdx = 0
+  let _selectedGapRef: Gap | null = null
 
   $: visibleSections = contextSections
 
@@ -357,6 +357,26 @@
     if (!sec) return null
     return { gap: sec.gaps[selGapIdx], sectionTitle: sec.title, sectionKind: sec.kind }
   })()
+
+  // Quando a ordenacao de gaps muda (ex: preencher um campo obrigatorio
+  // altera sua prioridade), re-resolve os indices a partir da referencia
+  // do gap selecionado, evitando que o cursor pule para outro gap.
+  $: if (_selectedGapRef) {
+    sortedVisibleSections
+    for (let si = 0; si < sortedVisibleSections.length; si++) {
+      const gi = sortedVisibleSections[si].gaps.indexOf(_selectedGapRef)
+      if (gi >= 0) {
+        selSecIdx = si
+        selGapIdx = gi
+        break
+      }
+    }
+  } else {
+    const sec = sortedVisibleSections[selSecIdx]
+    if (sec && selGapIdx < sec.gaps.length) {
+      _selectedGapRef = sec.gaps[selGapIdx]
+    }
+  }
 
   // Contagens consideram TODOS os gaps — o estado de colapso é só visual e
   // não pode alterar validação ou indicador de progresso real.
@@ -421,6 +441,7 @@
   function selectGap(si: number, gi: number) {
     selSecIdx = si
     selGapIdx = gi
+    _selectedGapRef = sortedVisibleSections[si]?.gaps[gi] ?? null
   }
 
   function nextGap() {
