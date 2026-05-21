@@ -1094,18 +1094,18 @@
     <!-- ── CONTEÚDO PRINCIPAL ── -->
     <main class="flex-1 flex flex-col overflow-hidden">
 
-      <!-- topbar: voltar + breadcrumb -->
-      {#if screen !== 'model'}
+      <!-- topbar: voltar + breadcrumb (oculto em 'model' e 'result') -->
+      {#if screen !== 'model' && screen !== 'result'}
         <div class="flex items-center gap-3 px-8 pt-6 pb-0 flex-shrink-0">
-          <button on:click={screen === 'result' ? restart : goBack}
+          <button on:click={goBack}
             class="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg
                    border border-[#2a2a42] text-[#8a94a8]
                    hover:border-[#f5a623]/40 hover:text-[#f5a623] hover:bg-[#f5a623]/5
                    transition-all group">
             <span class="text-sm leading-none group-hover:-translate-x-0.5 transition-transform">←</span>
-            <span>{screen === 'result' ? 'Novo prompt' : 'Voltar'}</span>
+            <span>Voltar</span>
           </button>
-          {#if screen !== 'result' && screen !== 'prompts'}
+          {#if screen !== 'prompts'}
             <span class="text-[#2a2a40]">/</span>
             <span class="text-xs text-[#6e7681]">
               {#if selectedModel}<span class="text-[#f5a623]">{selectedModel.nome}</span>{/if}
