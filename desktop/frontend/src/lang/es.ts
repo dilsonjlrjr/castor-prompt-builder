@@ -4,7 +4,7 @@ export const es: Dict = {
   app: {
     name: 'CASTOR Builder',
     tagline: 'Prompt Builder',
-    version: 'v0.1.0',
+    version: 'v1.2.0',
   },
 
   sidebar: {
