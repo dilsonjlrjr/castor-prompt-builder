@@ -259,10 +259,16 @@
   }, {} as Record<string, Role[]>)
 
   const CAT_ICON: Record<string, string> = {
+    // tecnologia & produto
     arquitetura: '🏗️', frontend: '🎨', backend: '⚙️',
     devops: '☁️', banco: '🗄️', dados: '📊',
     gestao: '📋', seguranca: '🔐', design: '✏️', marketing: '📣',
     qa: '🧪', documentacao: '📝',
+    // outras áreas
+    jornalismo: '📰', direito: '⚖️', medicina: '🩺',
+    veterinaria: '🐾', educacao: '🎓', financas: '💰',
+    rh: '👥', engenharia: '🔧', psicologia: '🧠',
+    saude: '❤️', vendas: '💼',
   }
   const CAT_LABEL: Record<string, string> = {
     arquitetura: 'Arquitetura',   frontend:  'Frontend & Mobile',
@@ -271,6 +277,12 @@
     gestao:      'Gestão',        seguranca: 'Segurança',
     design:      'Design',        marketing: 'Marketing',
     qa:          'QA & Testes',   documentacao: 'Documentação',
+    jornalismo:  'Jornalismo',    direito:   'Direito',
+    medicina:    'Medicina',      veterinaria: 'Medicina Veterinária',
+    educacao:    'Educação',      financas:  'Finanças',
+    rh:          'Recursos Humanos', engenharia: 'Engenharia',
+    psicologia:  'Psicologia',    saude:     'Saúde',
+    vendas:      'Vendas',
   }
   function catLabel(cat: string) { return CAT_LABEL[cat] ?? cat }
   function catIcon(cat: string)  { return CAT_ICON[cat]  ?? '📁' }
