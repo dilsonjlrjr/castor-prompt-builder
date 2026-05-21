@@ -44,6 +44,9 @@
   let promptList: PromptMeta[] = []
   let promptViewId: string | null = null
   let promptViewContent = ''
+  let promptSearch = ''
+  let promptToDelete: string | null = null
+  let promptViewCopied = false
   let previousScreen: Screen = 'model'
 
   // ---- validação de arquivos ----
@@ -564,6 +567,8 @@
   async function viewPrompt(id: string) {
     promptViewId = id
     promptViewContent = ''
+    promptToDelete = null
+    promptViewCopied = false
     const p = await GetPrompt(id)
     promptViewContent = p.conteudo
   }
@@ -573,6 +578,8 @@
     if (screen === 'prompts') { goBack(); return }
     previousScreen = screen
     promptViewId = null
+    promptSearch = ''
+    promptToDelete = null
     loadPrompts()
     screen = 'prompts'
   }
@@ -580,7 +587,40 @@
   async function deletePrompt(id: string) {
     await DeletePrompt(id)
     if (promptViewId === id) promptViewId = null
+    promptToDelete = null
     await loadPrompts()
+  }
+
+  function requestDelete(id: string) {
+    promptToDelete = promptToDelete === id ? null : id
+  }
+
+  async function copyPromptView() {
+    if (!promptViewContent) return
+    await navigator.clipboard.writeText(promptViewContent)
+    promptViewCopied = true
+    setTimeout(() => promptViewCopied = false, 2000)
+  }
+
+  // Filtra prompts por título (case-insensitive). Busca vazia devolve a lista.
+  $: filteredPrompts = promptSearch.trim()
+    ? promptList.filter(p => (p.titulo || '').toLowerCase().includes(promptSearch.toLowerCase()))
+    : promptList
+
+  // Converte "2026-05-21 11:53" em "há 5 min", "há 2 h", "há 3 d" ou data absoluta.
+  function relativeDate(d: string): string {
+    if (!d) return ''
+    const ts = Date.parse(d.replace(' ', 'T'))
+    if (isNaN(ts)) return d
+    const diff = Date.now() - ts
+    const min = Math.floor(diff / 60_000)
+    if (min < 1) return 'agora'
+    if (min < 60) return `há ${min} min`
+    const h = Math.floor(min / 60)
+    if (h < 24) return `há ${h} h`
+    const days = Math.floor(h / 24)
+    if (days < 7) return `há ${days} d`
+    return d
   }
 
   function restart() {
@@ -1559,46 +1599,116 @@
           </div>
         {:else if screen === 'prompts'}
           <div class="flex flex-col h-full" in:fly={{ y: 16, duration: 200 }}>
-            <h2 class="text-lg font-bold mb-1">Prompts salvos</h2>
-            <p class="text-sm text-[#6e7681] mb-5">
+            <!-- header com contador -->
+            <div class="flex items-end justify-between mb-1">
+              <h2 class="text-lg font-bold">Prompts salvos</h2>
+              {#if promptList.length > 0}
+                <span class="text-[11px] text-[#4a5060]">
+                  {promptList.length} {promptList.length === 1 ? 'prompt' : 'prompts'}
+                </span>
+              {/if}
+            </div>
+            <p class="text-sm text-[#6e7681] mb-4">
               Gerencie seus prompts gerados anteriormente.
             </p>
 
             <div class="flex-1 flex gap-4 min-h-0">
-              <div class="w-[40%] flex-shrink-0 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
-                {#if promptList.length === 0}
-                  <div class="p-4 text-xs text-[#4a5060] text-center">Nenhum prompt salvo</div>
-                {:else}
-                  <div class="flex flex-col">
-                    {#each promptList as p}
-                      <button
-                        on:click={() => viewPrompt(p.id)}
-                        class="flex items-center justify-between px-3 py-2.5 text-left text-xs transition-all
-                               border-b border-[#0e0e1a] last:border-b-0
-                               hover:bg-[#1a1a28]
-                               {promptViewId === p.id ? 'bg-[#a371f7]/10 border-l-2 border-l-[#a371f7]' : 'border-l-2 border-l-transparent'}">
-                        <div class="flex-1 min-w-0">
-                          <p class="truncate {promptViewId === p.id ? 'text-[#a371f7] font-medium' : 'text-[#c9d1d9]'}">
-                            {p.titulo || 'Sem título'}
-                          </p>
-                          <p class="text-[10px] text-[#4a5060]">{p.data}</p>
-                        </div>
-                        <button on:click|stopPropagation={() => deletePrompt(p.id)}
-                          class="flex-shrink-0 ml-2 text-[#3a3a50] hover:text-[#f85149] text-xs transition-colors">
-                          ✕
-                        </button>
+              <!-- coluna esquerda: busca + lista -->
+              <div class="w-[40%] flex-shrink-0 flex flex-col gap-3 min-h-0">
+
+                {#if promptList.length > 0}
+                  <div class="relative">
+                    <input
+                      type="text"
+                      bind:value={promptSearch}
+                      placeholder="Buscar por título…"
+                      class="w-full pl-8 pr-3 py-2 rounded-lg text-xs
+                             bg-[#0d0d18] border border-[#1a1a28]
+                             text-[#c9d1d9] placeholder:text-[#3a3a50]
+                             focus:outline-none focus:border-[#a371f7]/50 transition-colors" />
+                    <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#3a3a50] text-xs">🔍</span>
+                    {#if promptSearch}
+                      <button on:click={() => promptSearch = ''}
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-[#3a3a50] hover:text-[#c9d1d9] text-xs">
+                        ✕
                       </button>
-                    {/each}
+                    {/if}
                   </div>
                 {/if}
+
+                <div class="flex-1 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18] min-h-0">
+                  {#if promptList.length === 0}
+                    <div class="h-full flex flex-col items-center justify-center gap-2 p-6 text-center">
+                      <span class="text-2xl opacity-50">📭</span>
+                      <p class="text-xs text-[#6e7681]">Nenhum prompt salvo</p>
+                      <p class="text-[10px] text-[#4a5060] leading-relaxed">
+                        Salve prompts na tela de resultado para reaproveitá-los depois.
+                      </p>
+                    </div>
+                  {:else if filteredPrompts.length === 0}
+                    <div class="h-full flex items-center justify-center p-4 text-xs text-[#4a5060]">
+                      Nenhum resultado para "{promptSearch}"
+                    </div>
+                  {:else}
+                    <div class="flex flex-col">
+                      {#each filteredPrompts as p}
+                        <div class="flex items-center justify-between border-b border-[#0e0e1a] last:border-b-0
+                                    transition-all
+                                    {promptViewId === p.id ? 'bg-[#a371f7]/10 border-l-2 border-l-[#a371f7]' : 'border-l-2 border-l-transparent hover:bg-[#1a1a28]'}">
+                          <button
+                            on:click={() => viewPrompt(p.id)}
+                            class="flex-1 min-w-0 px-3 py-2.5 text-left text-xs">
+                            <p class="truncate {promptViewId === p.id ? 'text-[#a371f7] font-medium' : 'text-[#c9d1d9]'}">
+                              {p.titulo || 'Sem título'}
+                            </p>
+                            <p class="text-[10px] text-[#4a5060]" title={p.data}>{relativeDate(p.data)}</p>
+                          </button>
+
+                          {#if promptToDelete === p.id}
+                            <div class="flex items-center gap-1 pr-2">
+                              <button on:click={() => deletePrompt(p.id)}
+                                class="text-[10px] px-2 py-1 rounded bg-[#f85149]/15 border border-[#f85149]/40
+                                       text-[#f85149] hover:bg-[#f85149]/25 transition-colors">
+                                Confirmar
+                              </button>
+                              <button on:click={() => promptToDelete = null}
+                                class="text-[10px] px-2 py-1 rounded text-[#6e7681] hover:text-[#c9d1d9] transition-colors">
+                                Cancelar
+                              </button>
+                            </div>
+                          {:else}
+                            <button on:click={() => requestDelete(p.id)}
+                              title="Excluir"
+                              class="flex-shrink-0 mr-2 p-1 text-[#3a3a50] hover:text-[#f85149] text-xs transition-colors">
+                              ✕
+                            </button>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
 
-              <div class="flex-1 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
+              <!-- coluna direita: visualizador -->
+              <div class="flex-1 flex flex-col gap-3 min-h-0">
                 {#if promptViewId}
-                  <pre class="p-5 text-xs text-[#c9d1d9] leading-relaxed
-                              whitespace-pre-wrap font-mono">{promptViewContent || 'Carregando...'}</pre>
+                  <div class="flex justify-end">
+                    <button on:click={copyPromptView}
+                      class="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all
+                             {promptViewCopied
+                               ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+                               : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}">
+                      {promptViewCopied ? '✓ Copiado!' : '⎘ Copiar'}
+                    </button>
+                  </div>
+                  <div class="flex-1 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18] min-h-0">
+                    <pre class="p-5 text-xs text-[#c9d1d9] leading-relaxed
+                                whitespace-pre-wrap font-mono">{promptViewContent || 'Carregando...'}</pre>
+                  </div>
                 {:else}
-                  <div class="h-full flex items-center justify-center p-4 text-xs text-[#4a5060]">
+                  <div class="flex-1 flex items-center justify-center p-4 text-xs text-[#4a5060]
+                              rounded-xl border border-[#1a1a28] bg-[#0d0d18] min-h-0">
                     Selecione um prompt para visualizar
                   </div>
                 {/if}
