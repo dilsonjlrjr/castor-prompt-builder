@@ -2,7 +2,7 @@
   import { onMount } from 'svelte'
   import { fly, fade } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
-  import { GetModels, GetRoles, BuildPrompt, IsFirstRun, ValidateAll } from '../wailsjs/go/main/App.js'
+  import { GetModels, GetRoles, BuildPrompt, IsFirstRun, ValidateAll, SavePrompt, ListPrompts, DeletePrompt, GetPrompt } from '../wailsjs/go/main/App.js'
   import { main } from '../wailsjs/go/models'
 
   // ---- tipos ----
@@ -10,13 +10,14 @@
   type Model  = { id: string; nome: string; descricao: string; campos: Campo[] }
   type Role   = { id: string; nome: string; categoria: string; gaps_comuns: string[] }
   type Step   = { titulo: string; descricao: string }
-  type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result'
+  type Screen = 'model' | 'role' | 'narrative' | 'gap' | 'phase' | 'result' | 'prompts'
 
   // Gap unificado: campo do modelo (tem fieldId) ou gap de papel (fieldId = '')
   type Gap = { fieldId: string; pergunta: string; tipo: string; opcoes: string[]; obrigatorio: boolean; roleNome?: string; answer: string }
   // ContextSection agrupa gaps — do modelo ou de um papel
   type ContextSection = { title: string; kind: string; gaps: Gap[] }
   type FileStatus = { arquivo: string; tipo: string; ok: boolean; problema?: string }
+  type PromptMeta = { id: string; titulo: string; data: string }
 
   // ---- estado ----
   let models:  Model[] = []
@@ -38,6 +39,13 @@
   let resultError   = ''
   let building      = false
   let copied        = false
+  let saved         = false
+
+  // ---- prompts salvos ----
+  let promptList: PromptMeta[] = []
+  let promptViewId: string | null = null
+  let promptViewContent = ''
+  let previousScreen: Screen = 'model'
 
   // ---- validação de arquivos ----
   let showValidation   = false
@@ -163,7 +171,14 @@
     const first = await IsFirstRun()
     if (first) { tutorialSlide = 0; showTutorial = true }
     await runValidation()
-    hasSavedState = !!localStorage.getItem(SAVE_KEY)
+    hasSavedState = (() => {
+      const raw = localStorage.getItem(SAVE_KEY)
+      if (!raw) return false
+      try {
+        const s = JSON.parse(raw)
+        return !!s.selectedModelId
+      } catch { return false }
+    })()
   })
 
   // ---- persistência de estado ----
@@ -189,7 +204,7 @@
     localStorage.removeItem(SAVE_KEY)
   }
 
-  $: if (screen && screen !== 'result') saveState()
+  $: if (screen && screen !== 'result' && screen !== 'prompts') saveState()
 
   function resumeState() {
     const raw = localStorage.getItem(SAVE_KEY)
@@ -202,7 +217,7 @@
       if (s.contextSections) contextSections = s.contextSections.map((sec: any) => ({ ...sec, gaps: sec.gaps.map((g: any) => ({ ...g, answer: g.answer ?? '' })) }))
       if (s.usePhases !== undefined) usePhases = s.usePhases
       if (s.phases) phases = s.phases
-      if (s.screen && s.screen !== 'model') {
+      if (s.screen && s.screen !== 'model' && s.screen !== 'prompts') {
         screen = s.screen
         allExpanded = false
         // expand all sections on resume
@@ -271,11 +286,24 @@
   function modelColor(id: string) { return MODEL_COLOR[id] ?? '#6e7681' }
 
   // ---- navegação ----
+  const BACK_MAP: Partial<Record<Screen, () => Screen>> = {
+    role:      () => 'model',
+    narrative: () => 'role',
+    gap:       () => 'narrative',
+    phase:     () => (contextSections.length > 0 ? 'gap' : 'narrative'),
+  }
+
   function goBack() {
-    if (screen === 'role')      { screen = 'model';     return }
-    if (screen === 'narrative') { screen = 'role';      return }
-    if (screen === 'gap')       { screen = 'narrative'; return }
-    if (screen === 'phase')     { screen = contextSections.length > 0 ? 'gap' : 'narrative'; return }
+    if (screen === 'prompts') {
+      // Navegação em 2 níveis: primeiro fecha a visualização do prompt,
+      // depois sai da tela voltando à origem (nunca permanece em 'prompts').
+      if (promptViewId) { promptViewId = null; return }
+      const target = previousScreen && previousScreen !== 'prompts' ? previousScreen : 'model'
+      screen = target
+      return
+    }
+    const next = BACK_MAP[screen]
+    if (next) screen = next()
   }
 
   function toggleRole(id: string) {
@@ -534,6 +562,38 @@
     await navigator.clipboard.writeText(resultContent)
     copied = true
     setTimeout(() => copied = false, 2000)
+  }
+
+  async function saveToLibrary() {
+    await SavePrompt(resultContent)
+    saved = true
+    setTimeout(() => saved = false, 2000)
+  }
+
+  async function loadPrompts() {
+    promptList = await ListPrompts()
+  }
+
+  async function viewPrompt(id: string) {
+    promptViewId = id
+    promptViewContent = ''
+    const p = await GetPrompt(id)
+    promptViewContent = p.conteudo
+  }
+
+  function openPrompts() {
+    // Toggle: se já está em prompts, volta à origem.
+    if (screen === 'prompts') { goBack(); return }
+    previousScreen = screen
+    promptViewId = null
+    loadPrompts()
+    screen = 'prompts'
+  }
+
+  async function deletePrompt(id: string) {
+    await DeletePrompt(id)
+    if (promptViewId === id) promptViewId = null
+    await loadPrompts()
   }
 
   function restart() {
@@ -955,7 +1015,7 @@
   <div class="flex-1 flex overflow-hidden">
 
     <!-- ── SIDEBAR esquerda ── -->
-    <aside class="w-52 flex-shrink-0 flex flex-col items-center pt-6 pb-8 px-4
+    <aside class="w-56 flex-shrink-0 flex flex-col items-center pt-7 pb-7 px-5
                   border-r border-[#1a1a28] bg-[#0d0d18]">
 
       <!-- mascote -->
@@ -963,11 +1023,21 @@
            class="w-24 h-24 object-contain mb-3
                   drop-shadow-[0_0_18px_rgba(245,166,35,0.5)]" />
 
-      <div class="text-[10px] tracking-[0.3em] text-[#4a5060] uppercase mb-0.5">Prompt Builder</div>
-      <h1 class="text-base font-bold tracking-wider mb-8">
+      <div class="text-[10px] tracking-[0.3em] text-[#4a5060] uppercase mb-1">Prompt Builder</div>
+      <h1 class="text-base font-bold tracking-wider mb-7">
         <span class="text-[#f5a623]">CASTOR</span>
         <span class="text-[#e06b2e]"> BUILDER</span>
       </h1>
+
+      <!-- biblioteca de prompts -->
+      <button on:click={openPrompts}
+        class="w-full flex items-center gap-2.5 px-3.5 py-2.5 mb-7 rounded-lg
+               border border-[#1a1a28] text-[#6e7681] text-xs
+               hover:border-[#a371f7]/40 hover:text-[#a371f7] transition-all
+               {screen === 'prompts' ? 'border-[#a371f7]/40 text-[#a371f7] bg-[#a371f7]/8' : ''}">
+        <span class="text-sm">📚</span>
+        Prompts salvos
+      </button>
 
       <!-- stepper vertical -->
       <nav class="w-full flex flex-col gap-1">
@@ -1001,17 +1071,17 @@
       </nav>
 
       <!-- tutorial + versão -->
-      <div class="mt-auto flex flex-col items-center gap-3 w-full">
+      <div class="mt-auto flex flex-col items-center gap-4 w-full pt-6">
         <button on:click={() => { tutorialSlide = 0; showTutorial = true }}
-          class="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl
-                 bg-[#f5a623] text-black text-[11px] font-bold
+          class="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl
+                 bg-[#f5a623] text-black text-[12px] font-bold tracking-wide
                  hover:bg-[#e09010] active:scale-[0.97] transition-all
                  shadow-[0_0_16px_rgba(245,166,35,0.25)] hover:shadow-[0_0_24px_rgba(245,166,35,0.4)]
                  group">
-          <span class="text-sm group-hover:scale-110 transition-transform">🗺️</span>
+          <span class="text-base group-hover:scale-110 transition-transform">🗺️</span>
           Ver tutorial
         </button>
-        <div class="text-[10px] text-[#2a2a40]">v0.1.0</div>
+        <div class="text-[10px] tracking-wider text-[#2a2a40]">v0.1.0</div>
       </div>
     </aside>
 
@@ -1029,7 +1099,7 @@
             <span class="text-sm leading-none group-hover:-translate-x-0.5 transition-transform">←</span>
             <span>{screen === 'result' ? 'Novo prompt' : 'Voltar'}</span>
           </button>
-          {#if screen !== 'result'}
+          {#if screen !== 'result' && screen !== 'prompts'}
             <span class="text-[#2a2a40]">/</span>
             <span class="text-xs text-[#6e7681]">
               {#if selectedModel}<span class="text-[#f5a623]">{selectedModel.nome}</span>{/if}
@@ -1045,7 +1115,7 @@
       {/if}
 
       <!-- scroll area -->
-      <div class="flex-1 overflow-y-auto px-8 py-6">
+      <div class="flex-1 overflow-y-auto px-8 py-6 flex flex-col min-h-0">
 
         <!-- ============================================================
              TELA 1 — MODELO
@@ -1472,13 +1542,22 @@
                   <span class="text-[#3fb950]">✓</span>
                   <span class="text-sm font-semibold text-[#3fb950]">Prompt gerado com sucesso!</span>
                 </div>
-                <button on:click={copyResult}
-                  class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all
-                         {copied
-                           ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
-                           : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}">
-                  {copied ? '✓ Copiado!' : '⎘ Copiar'}
-                </button>
+                <div class="flex gap-2">
+                  <button on:click={saveToLibrary}
+                    class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all
+                           {saved
+                             ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+                             : 'border-[#1a1a28] text-[#6e7681] hover:border-[#a371f7]/40 hover:text-[#a371f7]'}">
+                    {saved ? '✓ Salvo!' : '💾 Salvar'}
+                  </button>
+                  <button on:click={copyResult}
+                    class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all
+                           {copied
+                             ? 'border-[#3fb950]/40 bg-[#3fb950]/10 text-[#3fb950]'
+                             : 'border-[#1a1a28] text-[#6e7681] hover:border-[#f5a623]/40 hover:text-[#f5a623]'}">
+                    {copied ? '✓ Copiado!' : '⎘ Copiar'}
+                  </button>
+                </div>
               </div>
             {/if}
 
@@ -1491,6 +1570,54 @@
                      hover:border-[#f5a623]/40 hover:text-[#f5a623] transition-all">
               ← Criar novo prompt
             </button>
+          </div>
+        {:else if screen === 'prompts'}
+          <div class="flex flex-col h-full" in:fly={{ y: 16, duration: 200 }}>
+            <h2 class="text-lg font-bold mb-1">Prompts salvos</h2>
+            <p class="text-sm text-[#6e7681] mb-5">
+              Gerencie seus prompts gerados anteriormente.
+            </p>
+
+            <div class="flex-1 flex gap-4 min-h-0">
+              <div class="w-[40%] flex-shrink-0 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
+                {#if promptList.length === 0}
+                  <div class="p-4 text-xs text-[#4a5060] text-center">Nenhum prompt salvo</div>
+                {:else}
+                  <div class="flex flex-col">
+                    {#each promptList as p}
+                      <button
+                        on:click={() => viewPrompt(p.id)}
+                        class="flex items-center justify-between px-3 py-2.5 text-left text-xs transition-all
+                               border-b border-[#0e0e1a] last:border-b-0
+                               hover:bg-[#1a1a28]
+                               {promptViewId === p.id ? 'bg-[#a371f7]/10 border-l-2 border-l-[#a371f7]' : 'border-l-2 border-l-transparent'}">
+                        <div class="flex-1 min-w-0">
+                          <p class="truncate {promptViewId === p.id ? 'text-[#a371f7] font-medium' : 'text-[#c9d1d9]'}">
+                            {p.titulo || 'Sem título'}
+                          </p>
+                          <p class="text-[10px] text-[#4a5060]">{p.data}</p>
+                        </div>
+                        <button on:click|stopPropagation={() => deletePrompt(p.id)}
+                          class="flex-shrink-0 ml-2 text-[#3a3a50] hover:text-[#f85149] text-xs transition-colors">
+                          ✕
+                        </button>
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+
+              <div class="flex-1 overflow-y-auto rounded-xl border border-[#1a1a28] bg-[#0d0d18]">
+                {#if promptViewId}
+                  <pre class="p-5 text-xs text-[#c9d1d9] leading-relaxed
+                              whitespace-pre-wrap font-mono">{promptViewContent || 'Carregando...'}</pre>
+                {:else}
+                  <div class="h-full flex items-center justify-center p-4 text-xs text-[#4a5060]">
+                    Selecione um prompt para visualizar
+                  </div>
+                {/if}
+              </div>
+            </div>
           </div>
         {/if}
 
