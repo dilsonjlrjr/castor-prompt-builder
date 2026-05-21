@@ -29,26 +29,30 @@ Sem IA no processo. Tudo é parsing, heurística e template engine próprio.
 ```
 castor-prompt-builder/
 ├── CLAUDE.md
+├── main.go                         ← entrypoint do TUI (lê roles/ e models/ direto)
+├── internal/tui/                   ← código da versão TUI
+├── pkg/
+│   ├── parser/                     ← leitura dos .md (compartilhado TUI + desktop)
+│   └── engine/                     ← template engine
+├── roles/                          ← FONTE ÚNICA de papéis (23 categorias, 91 papéis)
+├── models/                         ← FONTE ÚNICA de modelos (RTF, RACE, RISEN, CREATE)
 ├── desktop/                        ← projeto Wails
 │   ├── main.go
-│   ├── app.go                      ← lógica principal (GetModels, GetRoles, BuildPrompt)
-│   ├── validate.go                 ← ValidateAll — valida models e roles ao iniciar
-│   ├── bundled/                    ← models e roles embutidos via embed.FS
-│   │   ├── models/                 ← rtf.md, race.md, risen.md, create.md
-│   │   └── roles/                  ← papéis organizados por categoria/
+│   ├── app.go                      ← GetModels, GetRoles, BuildPrompt
+│   ├── validate.go                 ← ValidateAll
+│   ├── bundled/                    ← cópia derivada de roles/ e models/ (sync no build)
+│   ├── Makefile                    ← targets: macos, windows, linux (rodam sync-bundled antes)
 │   ├── build/                      ← assets de build (ícones, manifests)
-│   ├── frontend/
-│   │   ├── src/App.svelte          ← toda a UI (wizard de 6 telas)
-│   │   ├── wailsjs/go/main/        ← bindings gerados (App.js, App.d.ts)
-│   │   └── wailsjs/go/models.ts   ← DTOs gerados
-│   └── pkg/
-│       ├── parser/                 ← leitura dos .md de roles e models
-│       └── engine/                 ← template engine
-├── dist/                           ← artefatos de distribuição
-│   ├── castor-builder-macos.app
-│   └── castor-builder-windows-amd64.exe
-└── Makefile                        ← targets: macos, windows, icons
+│   └── frontend/
+│       ├── src/App.svelte          ← toda a UI (wizard de 6 telas)
+│       └── wailsjs/go/             ← bindings gerados
+└── dist/                           ← artefatos de distribuição
 ```
+
+**Fonte única**: `roles/` e `models/` na raiz são a verdade. O TUI lê direto. O desktop
+precisa de `desktop/bundled/` porque `//go:embed` não aceita `..` — esse dir é
+sincronizado pelo `make sync-bundled` (rodado automaticamente antes de `macos`,
+`windows`, `linux`). Edite **sempre** na raiz; nunca direto em `bundled/`.
 
 ---
 

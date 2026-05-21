@@ -161,6 +161,36 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class PromptDTO {
+	    id: string;
+	    conteudo: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PromptDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.conteudo = source["conteudo"];
+	    }
+	}
+	export class PromptMetaDTO {
+	    id: string;
+	    titulo: string;
+	    data: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PromptMetaDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.titulo = source["titulo"];
+	        this.data = source["data"];
+	    }
+	}
 	export class RoleDTO {
 	    id: string;
 	    nome: string;

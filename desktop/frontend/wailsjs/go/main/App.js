@@ -6,8 +6,16 @@ export function BuildPrompt(arg1) {
   return window['go']['main']['App']['BuildPrompt'](arg1);
 }
 
+export function DeletePrompt(arg1) {
+  return window['go']['main']['App']['DeletePrompt'](arg1);
+}
+
 export function GetModels() {
   return window['go']['main']['App']['GetModels']();
+}
+
+export function GetPrompt(arg1) {
+  return window['go']['main']['App']['GetPrompt'](arg1);
 }
 
 export function GetRoles() {
@@ -16,6 +24,18 @@ export function GetRoles() {
 
 export function IsFirstRun() {
   return window['go']['main']['App']['IsFirstRun']();
+}
+
+export function ListPrompts() {
+  return window['go']['main']['App']['ListPrompts']();
+}
+
+export function SavePrompt(arg1) {
+  return window['go']['main']['App']['SavePrompt'](arg1);
+}
+
+export function UpdatePrompt(arg1, arg2) {
+  return window['go']['main']['App']['UpdatePrompt'](arg1, arg2);
 }
 
 export function ValidateAll() {

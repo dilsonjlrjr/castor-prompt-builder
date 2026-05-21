@@ -2,9 +2,23 @@ APP    := castor-builder
 OUTDIR := ../dist
 WAILS  := $(shell command -v wails 2>/dev/null || echo "$(shell go env GOPATH)/bin/wails")
 
-.PHONY: all macos windows linux clean generate-icns
+.PHONY: all macos windows linux clean generate-icns sync-bundled
 
 all: macos windows linux
+
+# ── Sincroniza roles/ e models/ da raiz para o bundled embed ────────────────
+# A raiz é a fonte de verdade. O TUI lê direto de ../roles e ../models;
+# o desktop precisa de bundled/ porque //go:embed não aceita caminhos com "..".
+# Roda antes de qualquer build de release.
+sync-bundled:
+	@echo "▶ Sincronizando roles/ e models/ da raiz → desktop/bundled/..."
+	@mkdir -p bundled/roles
+	@rsync -a --delete ../roles/ bundled/roles/
+	@rsync -a --include='*.md' --exclude='*/' ../models/ bundled/
+	@n_roles=$$(find bundled/roles -name '*.md' | wc -l | tr -d ' '); \
+	 n_cats=$$(find bundled/roles -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' '); \
+	 n_models=$$(find bundled -maxdepth 1 -name '*.md' | wc -l | tr -d ' '); \
+	 echo "✓ bundled: $$n_roles roles em $$n_cats categorias + $$n_models models"
 
 # ── Gera .icns com múltiplos tamanhos a partir de build/appicon.png ──────────
 # Requer: sips + iconutil (nativos no macOS)
@@ -28,7 +42,7 @@ generate-icns:
 
 # ── macOS ────────────────────────────────────────────────────────────────────
 # Gera universal binary (arm64 + amd64) → .app + .dmg se tiver create-dmg
-macos: generate-icns
+macos: sync-bundled generate-icns
 	@echo "▶ Building macOS universal..."
 	@mkdir -p $(OUTDIR)
 	$(WAILS) build -clean -platform darwin/universal -o $(APP)
@@ -54,7 +68,7 @@ macos: generate-icns
 # ── Windows ──────────────────────────────────────────────────────────────────
 # Requer: brew install mingw-w64
 # Distribui: exe + pasta roles/ (devem ficar juntos — o app lê roles/ ao lado do .exe)
-windows:
+windows: sync-bundled
 	@echo "▶ Building Windows amd64..."
 	@mkdir -p $(OUTDIR)
 	@if ! command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then \
@@ -70,7 +84,7 @@ windows:
 
 # ── Linux ────────────────────────────────────────────────────────────────────
 # Usa Docker com a imagem oficial do Wails (inclui WebKit2GTK)
-linux:
+linux: sync-bundled
 	@echo "▶ Building Linux amd64 (Docker)..."
 	@mkdir -p $(OUTDIR)
 	@if ! command -v docker >/dev/null 2>&1; then \

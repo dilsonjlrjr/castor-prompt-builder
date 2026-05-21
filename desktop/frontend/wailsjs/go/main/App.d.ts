@@ -4,10 +4,20 @@ import {main} from '../models';
 
 export function BuildPrompt(arg1:main.BuildRequestDTO):Promise<main.BuildResultDTO>;
 
+export function DeletePrompt(arg1:string):Promise<void>;
+
 export function GetModels():Promise<Array<main.ModelDTO>>;
+
+export function GetPrompt(arg1:string):Promise<main.PromptDTO>;
 
 export function GetRoles():Promise<Array<main.RoleDTO>>;
 
 export function IsFirstRun():Promise<boolean>;
+
+export function ListPrompts():Promise<Array<main.PromptMetaDTO>>;
+
+export function SavePrompt(arg1:string):Promise<main.PromptMetaDTO>;
+
+export function UpdatePrompt(arg1:string,arg2:string):Promise<void>;
 
 export function ValidateAll():Promise<Array<main.FileStatus>>;
